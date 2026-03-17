@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Stock Control | Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050507;
+            --surface: #0f0f13;
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --text: #ffffff;
+            --text-dim: #8a8a98;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --panel-bg: rgba(255, 255, 255, 0.02);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image:
+                radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.05), transparent 40%);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .brand h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #a5a5b1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-top: 0.2rem;
+        }
+
+        .pill {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.0rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: inline-flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.45);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.25rem;
+        }
+
+        .section-sub {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: block;
+            margin-bottom: 0.4rem;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            color: white;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        .row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .field {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .field.small {
+            flex: 0 0 160px;
+            min-width: 160px;
+        }
+
+        button {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ffd6d6;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.18);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        .help {
+            color: var(--text-dim);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: #1e1e26;
+            border: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            animation: slide-in 0.25s ease-out;
+            font-size: 0.9rem;
+            max-width: 440px;
+        }
+
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <h1>Nexus Admin</h1>
+                <p>Manage products, stores, and centralized inventory</p>
+            </div>
+            <div class="pill" id="auth-pill">Admin: Logged out</div>
+        </header>
+
+        <!-- Login -->
+        <div class="panel" id="login-panel">
+            <div class="section-title">Admin Login</div>
+            <div class="section-sub">Password-based login (demo)</div>
+
+            <div class="row">
+                <div class="field">
+                    <label for="admin-password">Password</label>
+                    <input id="admin-password" type="password" placeholder="Enter password" autocomplete="off">
+                </div>
+                <button class="btn-primary" onclick="login()">Login</button>
+            </div>
+            <div style="margin-top: 0.9rem" class="help">
+                This stores <code style="color:#c7c9ff;">isAdmin=true</code> in localStorage after successful login.
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dash" style="display:none;">
+            <div class="grid" style="margin-top: 1rem;">
+                <div class="panel">
+                    <div class="section-title">Product Management</div>
+                    <div class="section-sub">Add or delete products (inventory rows are created/cleaned automatically).</div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label for="new-product-name">Add Product (name)</label>
+                            <input id="new-product-name" placeholder="e.g. Smartwatch" autocomplete="off">
+                        </div>
+                        <button class="btn-primary" onclick="addProduct()">Add</button>
+                    </div>
+
+                    <div class="row" style="margin-top:0.75rem;">
+                        <div class="field">
+                            <label for="delete-product-id">Delete Product (product_id)</label>
+                            <input id="delete-product-id" placeholder="e.g. PROD-2200" autocomplete="off">
+                        </div>
+                        <button class="btn-danger" onclick="deleteProduct()">Delete</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="section-title">Store Management</div>
+                    <div class="section-sub">Add or delete stores (dataset-linked records are cleaned up).</div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label for="new-store-name">Add Store (city/name)</label>
+                            <input id="new-store-name" placeholder="e.g. Mumbai" autocomplete="off">
+                        </div>
+                        <button class="btn-primary" onclick="addStore()">Add</button>
+                    </div>
+
+                    <div class="row" style="margin-top:0.75rem;">
+                        <div class="field">
+                            <label for="delete-store-id">Delete Store (store_id)</label>
+                            <input id="delete-store-id" placeholder="e.g. STORE-150" autocomplete="off">
+                        </div>
+                        <button class="btn-danger" onclick="deleteStore()">Delete</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 1rem;">
+                <div class="section-title">Inventory Management</div>
+                <div class="section-sub">Centralized inventory only (reservation logic is preserved).</div>
+
+                <div class="row">
+                    <div class="field">
+                        <label for="product-id">Product ID</label>
+                        <input id="product-id" placeholder="e.g. PROD-2000" autocomplete="off">
+                    </div>
+                    <div class="field small">
+                        <label for="qty">Quantity (delta)</label>
+                        <input id="qty" type="number" value="1" step="1">
+                    </div>
+                    <button class="btn-primary" onclick="updateStock()">Update Stock</button>
+                    <button class="btn-secondary" onclick="addStock()">Add Stock</button>
+                    <button class="btn-danger" onclick="reduceStock()">Reduce Stock</button>
+                    <button class="btn-secondary" onclick="logout()">Logout</button>
+                </div>
+
+                <div style="margin-top: 0.9rem" class="help">
+                    User dashboard: <a href="/" style="color: #c7c9ff; text-decoration: none;">/</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+        function showToast(msg) {
+            const host = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerText = msg;
+            host.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 250); }, 3500);
+        }
+
+        function isAdmin() {
+            return localStorage.getItem('isAdmin') === 'true';
+        }
+
+        function setAuthPill() {
+            const pill = document.getElementById('auth-pill');
+            pill.innerText = isAdmin() ? 'Admin: Logged in' : 'Admin: Logged out';
+        }
+
+        function showLoginOrDash() {
+            document.getElementById('login-panel').style.display = isAdmin() ? 'none' : '';
+            document.getElementById('dash').style.display = isAdmin() ? '' : 'none';
+            setAuthPill();
+        }
+
+        async function login() {
+            const password = (document.getElementById('admin-password').value || '').trim();
+            if (!password) return showToast('⚠️ Password required');
+            try {
+                const res = await fetch('/admin_login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return showToast(`❌ ${data.detail || 'Login failed'}`);
+                if (data.admin) {
+                    localStorage.setItem('isAdmin', 'true');
+                    document.getElementById('admin-password').value = '';
+                    showToast('✅ Logged in');
+                    showLoginOrDash();
+                } else {
+                    showToast('❌ Login failed');
+                }
+            } catch (e) {
+                showToast('❌ Network error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('isAdmin');
+            showToast('ℹ️ Logged out');
+            showLoginOrDash();
+        }
+
+        function getPayload() {
+            const product_id = (document.getElementById('product-id').value || '').trim();
+            const quantity = parseInt(document.getElementById('qty').value, 10);
+            return { product_id, quantity };
+        }
+
+        async function adminPost(path, payload) {
+            const res = await fetch(path, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-is-admin': isAdmin() ? 'true' : 'false'
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || 'Request failed');
+            return data;
+        }
+
+        async function adminDelete(path) {
+            const res = await fetch(path, {
+                method: 'DELETE',
+                headers: { 'x-is-admin': isAdmin() ? 'true' : 'false' }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || 'Request failed');
+            return data;
+        }
+
+        async function addStock() {
+            const { product_id, quantity } = getPayload();
+            if (!product_id) return showToast('⚠️ Product ID required');
+            if (!Number.isFinite(quantity) || quantity <= 0) return showToast('⚠️ Quantity must be > 0');
+            try {
+                const data = await adminPost('/add_stock', { product_id, quantity });
+                showToast(`✅ Added ${quantity} to ${product_id} (total: ${data.total_stock_after})`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function reduceStock() {
+            const { product_id, quantity } = getPayload();
+            if (!product_id) return showToast('⚠️ Product ID required');
+            if (!Number.isFinite(quantity) || quantity <= 0) return showToast('⚠️ Quantity must be > 0');
+            try {
+                const data = await adminPost('/reduce_stock', { product_id, quantity });
+                showToast(`✅ Reduced ${quantity} from ${product_id} (total: ${data.total_stock_after})`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function updateStock() {
+            const { product_id, quantity } = getPayload();
+            if (!product_id) return showToast('⚠️ Product ID required');
+            if (!Number.isFinite(quantity) || quantity === 0) return showToast('⚠️ Quantity must be non-zero');
+            try {
+                const data = await adminPost('/update_stock', { product_id, quantity });
+                showToast(`✅ Updated ${product_id} total: ${data.total_stock_after}`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function addProduct() {
+            const product_name = (document.getElementById('new-product-name').value || '').trim();
+            if (!product_name) return showToast('⚠️ Product name required');
+            try {
+                const data = await adminPost('/add_product', { product_name });
+                document.getElementById('new-product-name').value = '';
+                showToast(`✅ Added product ${data.product_id}`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function deleteProduct() {
+            const product_id = (document.getElementById('delete-product-id').value || '').trim();
+            if (!product_id) return showToast('⚠️ product_id required');
+            try {
+                await adminDelete(`/delete_product/${encodeURIComponent(product_id)}`);
+                document.getElementById('delete-product-id').value = '';
+                showToast(`✅ Deleted product ${product_id}`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function addStore() {
+            const store_name = (document.getElementById('new-store-name').value || '').trim();
+            if (!store_name) return showToast('⚠️ Store name required');
+            try {
+                const data = await adminPost('/add_store', { store_name });
+                document.getElementById('new-store-name').value = '';
+                showToast(`✅ Added store ${data.store_id}`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        async function deleteStore() {
+            const store_id = (document.getElementById('delete-store-id').value || '').trim();
+            if (!store_id) return showToast('⚠️ store_id required');
+            try {
+                await adminDelete(`/delete_store/${encodeURIComponent(store_id)}`);
+                document.getElementById('delete-store-id').value = '';
+                showToast(`✅ Deleted store ${store_id}`);
+            } catch (e) {
+                showToast(`❌ ${e.message}`);
+            }
+        }
+
+        showLoginOrDash();
+    </script>
+</body>
+
+</html>
+

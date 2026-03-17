@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus | Smart Retail</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050507;
+            --surface: #0f0f13;
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --text: #ffffff;
+            --text-dim: #8a8a98;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --panel-bg: rgba(255, 255, 255, 0.02);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.05), transparent 40%);
+        }
+
+        .container {
+            max-width: 1300px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        @media (max-width: 1100px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .brand h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #a5a5b1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-top: 0.2rem;
+        }
+
+        .sync-indicator {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--success);
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Table Design (legacy; retained) */
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            overflow: hidden;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Admin tools are served separately in /admin */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: var(--panel-bg);
+            padding: 1.2rem 1.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .product-info .name {
+            font-weight: 600;
+            display: block;
+        }
+
+        .product-info .sku {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: monospace;
+        }
+
+        .stock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .badge-green {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .badge-yellow {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .badge-red {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .trust-score {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .score-bar-bg {
+            width: 60px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .stores-toggle {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 0.45rem 0.7rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .stores-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--text);
+        }
+
+        .stores-row td {
+            padding-top: 0;
+            padding-bottom: 1.2rem;
+        }
+
+        .stores-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1rem 1.25rem;
+            margin-top: 0.75rem;
+        }
+
+        .stores-panel .meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+
+        .stores-panel .meta .title {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .stores-panel .meta .sub {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .store-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem 1rem;
+        }
+
+        @media (max-width: 900px) {
+            .store-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .store-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .store-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.55rem 0.65rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.18);
+            font-size: 0.85rem;
+        }
+
+        .store-item .name {
+            font-weight: 650;
+        }
+
+        .store-item .qty {
+            color: var(--text-dim);
+            font-family: monospace;
+            font-weight: 700;
+        }
+        button {
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+
+        .btn-sale {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn-sale:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-reserve {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-reserve:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+            filter: brightness(1.1);
+        }
+
+        .btn-waitlist {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-waitlist:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--success);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        /* Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: #1e1e26;
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            animation: slide-in 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal */
+        .modal-root {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-content p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 1.5rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* Smart retail UI (cards + filters + details)                         */
+        /* ------------------------------------------------------------------ */
+        :root {
+            --surface-2: rgba(255, 255, 255, 0.03);
+        }
+
+        .topbar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            margin: 1rem 0 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .search {
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.75rem 0.9rem;
+            border-radius: 1rem;
+            box-shadow: 0 18px 45px -18px rgba(0, 0, 0, 0.55);
+        }
+
+        .search input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 0;
+        }
+
+        .filters {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 0.55rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            font-weight: 700;
+        }
+
+        .chip:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--text);
+        }
+
+        .chip.active {
+            background: rgba(99, 102, 241, 0.14);
+            border-color: rgba(99, 102, 241, 0.35);
+            color: #d9dbff;
+        }
+
+        .select {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin: 0 0 1.25rem;
+        }
+
+        @media (max-width: 980px) {
+            .summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+        }
+
+        .stat .k {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .stat .v {
+            margin-top: 0.35rem;
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .stat .hint {
+            margin-top: 0.15rem;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+        }
+
+        .section {
+            margin: 1.25rem 0 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+        }
+
+        .section h2 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+
+        .section .sub {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .reco {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(260px, 1fr);
+            overflow-x: auto;
+            gap: 0.9rem;
+            padding-bottom: 0.25rem;
+            scroll-snap-type: x mandatory;
+        }
+
+        .reco::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .reco::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            align-items: stretch;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        @media (max-width: 560px) {
+            body { padding: 1.25rem; }
+            header { margin-bottom: 1.5rem; }
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 16px;
+            box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.75);
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.85);
+        }
+
+        .img-wrap {
+            width: 100%;
+            height: 160px;
+            border-radius: 1.05rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            flex: 0 0 auto;
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-body {
+            padding-top: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .card .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .name {
+            font-weight: 850;
+            letter-spacing: -0.02em;
+            font-size: 1rem;
+            line-height: 1.2;
+        }
+
+        .sku {
+            margin-top: 0.25rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: var(--text-dim);
+            font-size: 0.78rem;
+        }
+
+        .badges {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .badge {
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 0.35rem 0.55rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .b-green {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.25);
+            color: #bff7df;
+        }
+
+        .b-yellow {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.25);
+            color: #ffe8b8;
+        }
+
+        .b-red {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #ffd0d0;
+        }
+
+        .b-indigo {
+            background: rgba(99, 102, 241, 0.12);
+            border-color: rgba(99, 102, 241, 0.25);
+            color: #d9dbff;
+        }
+
+        .line {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .line .k {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-weight: 750;
+        }
+
+        .line .v {
+            font-weight: 950;
+            letter-spacing: -0.02em;
+        }
+
+        .avail {
+            color: var(--success);
+            font-size: 1.25rem;
+        }
+
+        .avail.low {
+            color: var(--warning);
+        }
+
+        .avail.out {
+            color: var(--danger);
+        }
+
+        .progress {
+            margin-top: 0.75rem;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .progress>div {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            transition: width 0.35s ease;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.6rem;
+            margin-top: 0.9rem;
+            margin-top: auto;
+        }
+
+        .actions.one {
+            grid-template-columns: 1fr;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 10px 30px -18px var(--accent-glow);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.06);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+
+        .btn-ghost:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.14);
+            color: #ffd0d0;
+            border-color: rgba(239, 68, 68, 0.20);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.18);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        .pager {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.2rem 0 0;
+            flex-wrap: wrap;
+        }
+
+        .pager .info {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .pages {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 0.55rem 0.8rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-weight: 900;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+
+        .page-btn:hover:not(.disabled) {
+            transform: translateY(-1px);
+            border-color: rgba(99, 102, 241, 0.35);
+        }
+
+        .page-btn.active {
+            background: rgba(99, 102, 241, 0.16);
+            border-color: rgba(99, 102, 241, 0.35);
+            color: #d9dbff;
+        }
+
+        .page-btn.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1.1rem 1.2rem;
+            margin-top: 0.6rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            background: rgba(0, 0, 0, 0.20);
+            color: var(--text-dim);
+            font-weight: 800;
+        }
+
+        .banner {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.22);
+            border-radius: 1.25rem;
+            padding: 0.85rem 1rem;
+            margin: 0.9rem 0 0.5rem;
+            color: #ffe8b8;
+            font-weight: 850;
+            display: none;
+            box-shadow: 0 18px 45px -22px rgba(0, 0, 0, 0.6);
+        }
+
+        .feed {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1rem 1rem;
+            box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.75);
+            position: sticky;
+            top: 18px;
+            max-height: calc(100vh - 42px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .feed-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.75rem;
+        }
+
+        .feed-head .t {
+            font-weight: 950;
+            letter-spacing: -0.02em;
+        }
+
+        .feed-head .s {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-weight: 750;
+        }
+
+        .feed-list {
+            overflow: auto;
+            padding-right: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+
+        .feed-list::-webkit-scrollbar { width: 8px; }
+        .feed-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
+
+        .evt {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.18);
+            border-radius: 1rem;
+            padding: 0.7rem 0.75rem;
+        }
+
+        .evt .m {
+            font-weight: 850;
+            font-size: 0.9rem;
+        }
+
+        .evt .meta {
+            margin-top: 0.25rem;
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .timer-badge {
+            background: rgba(99, 102, 241, 0.12);
+            border-color: rgba(99, 102, 241, 0.25);
+            color: #d9dbff;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            border-top-color: rgba(99, 102, 241, 0.9);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin: 0.9rem 0 0.75rem;
+        }
+
+        @media (max-width: 520px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mini {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 1rem;
+            padding: 0.8rem 0.9rem;
+        }
+
+        .mini .k {
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .mini .v {
+            margin-top: 0.25rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .stores {
+            margin-top: 0.85rem;
+        }
+
+        .stores .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .stores .head .t {
+            font-weight: 900;
+        }
+
+        .stores .head .s {
+            color: var(--text-dim);
+            font-size: 0.82rem;
+        }
+
+        .store-list2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        @media (max-width: 520px) {
+            .store-list2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .store-item2 {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.7rem 0.75rem;
+            border-radius: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.18);
+            font-size: 0.9rem;
+        }
+
+        .store-item2 .qty {
+            color: var(--text-dim);
+            font-family: ui-monospace, monospace;
+            font-weight: 900;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+            background-size: 180% 100%;
+            animation: sk 1.1s ease-in-out infinite;
+        }
+
+        @keyframes sk {
+            0% {
+                background-position: 0% 0%;
+            }
+
+            100% {
+                background-position: 180% 0%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <h1>Nexus Stock Control</h1>
+                <p>Enterprise Real-Time Inventory Aggregator</p>
+            </div>
+            <div class="sync-indicator">
+                <div class="pulse" id="pulse-dot"></div>
+                <span id="sync-text">Live Sync: Active</span>
+            </div>
+        </header>
+
+        <div class="summary">
+            <div class="stat">
+                <div class="k">Total products</div>
+                <div class="v" id="stat-total">—</div>
+                <div class="hint">Live from inventory</div>
+            </div>
+            <div class="stat">
+                <div class="k">Low stock</div>
+                <div class="v" id="stat-low">—</div>
+                <div class="hint">Available &lt; 10</div>
+            </div>
+            <div class="stat">
+                <div class="k">Out of stock</div>
+                <div class="v" id="stat-out">—</div>
+                <div class="hint">Available = 0</div>
+            </div>
+            <div class="stat">
+                <div class="k">Active reservations</div>
+                <div class="v" id="stat-rsv">—</div>
+                <div class="hint">Reserved units (live)</div>
+            </div>
+        </div>
+
+        <div class="topbar">
+            <div class="search">
+                <span style="color:var(--text-dim); font-weight:900;">⌕</span>
+                <input id="q" placeholder="Search products by name or SKU…">
+            </div>
+            <div class="filters">
+                <div class="chip active" id="chip-all" onclick="setStatusFilter('all')">All</div>
+                <div class="chip" id="chip-in" onclick="setStatusFilter('in')">In stock</div>
+                <div class="chip" id="chip-low" onclick="setStatusFilter('low')">Low</div>
+                <div class="chip" id="chip-out" onclick="setStatusFilter('out')">Out</div>
+                <div class="chip" id="chip-fast" onclick="toggleFast()">Selling fast</div>
+                <select id="cat" class="select" onchange="setCategory(this.value)">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="layout">
+            <div>
+                <div class="section">
+                    <div>
+                        <h2>Recommended for you</h2>
+                        <div class="sub">High demand or high availability picks</div>
+                    </div>
+                    <div class="sub" id="reco-sub">—</div>
+                </div>
+                <div class="reco" id="reco"></div>
+
+                <div id="low-stock-banner" class="banner">⚠️ Low stock items need attention</div>
+
+                <div class="section">
+                    <div>
+                        <h2>All products</h2>
+                        <div class="sub" id="count-sub">—</div>
+                    </div>
+                    <div class="sub" id="last-updated">—</div>
+                </div>
+                <div id="loading" class="loading" style="display:none;">
+                    <div class="spinner"></div>
+                    Loading products…
+                </div>
+                <div class="grid" id="grid"></div>
+                <div class="pager" id="pager" style="display:none;">
+                    <div class="info" id="pager-info">—</div>
+                    <div class="pages" id="pager-pages"></div>
+                </div>
+            </div>
+
+            <aside class="feed" id="feed">
+                <div class="feed-head">
+                    <div class="t">Live activity</div>
+                    <div class="s" id="feed-sub">—</div>
+                </div>
+                <div class="feed-list" id="feed-list"></div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Modals -->
+    <div id="action-modal" class="modal-root" onclick="if(event.target === this) closeModal()">
+        <div class="modal-content">
+            <h3 id="modal-title">Action Title</h3>
+            <p id="modal-subtitle">Description goes here</p>
+            <div id="modal-form-area">
+                <!-- Inputs injected -->
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn-ghost" style="flex: 1" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex: 2" id="modal-submit-btn">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="product-modal" class="modal-root" onclick="if(event.target === this) closeProductModal()">
+        <div class="modal-content">
+            <h3 id="p-title">Product</h3>
+            <p id="p-sub" style="margin-bottom:0.75rem;">SKU • status</p>
+
+            <div class="detail-grid">
+                <div class="mini">
+                    <div class="k">Available</div>
+                    <div class="v" id="p-avail">—</div>
+                </div>
+                <div class="mini">
+                    <div class="k">Total / Reserved</div>
+                    <div class="v" id="p-total">—</div>
+                </div>
+            </div>
+
+            <div class="mini" style="margin:0.25rem 0 0.75rem;">
+                <div class="k">Trust & demand</div>
+                <div class="v" id="p-trust">—</div>
+                <div style="margin-top:0.55rem;">
+                    <canvas id="demand-chart" width="460" height="90" style="width:100%; height:90px;"></canvas>
+                </div>
+                <div style="margin-top:0.4rem; color:var(--text-dim); font-size:0.82rem;" id="p-explain">—</div>
+            </div>
+
+            <div class="stores">
+                <div class="head">
+                    <div class="t">Available in stores</div>
+                    <div class="s" id="p-stores-sub">—</div>
+                </div>
+                <div class="store-list2" id="p-stores"></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.65rem; margin-top:1rem;">
+                <button class="btn-ghost" onclick="addToCart()">Add to Cart</button>
+                <button class="btn-primary" id="p-buy" onclick="buyNow()">Buy Now</button>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.65rem; margin-top:0.65rem;">
+                <button class="btn-primary" id="p-reserve" onclick="reserveFromDetail()">Reserve</button>
+                <button class="btn-danger" id="p-notify" onclick="notifyFromDetail()">Notify Me</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================
+        // State
+        // =====================
+        const REFRESH_RATE = 2000;
+        let all = [];
+        let filtered = [];
+        let lastUpdatedAt = null;
+
+        const ui = {
+            q: () => document.getElementById('q'),
+            cat: () => document.getElementById('cat'),
+            grid: () => document.getElementById('grid'),
+            reco: () => document.getElementById('reco'),
+            countSub: () => document.getElementById('count-sub'),
+            recoSub: () => document.getElementById('reco-sub'),
+            lastUpdated: () => document.getElementById('last-updated'),
+            loading: () => document.getElementById('loading'),
+            pager: () => document.getElementById('pager'),
+            pagerInfo: () => document.getElementById('pager-info'),
+            pagerPages: () => document.getElementById('pager-pages'),
+            chipAll: () => document.getElementById('chip-all'),
+            chipIn: () => document.getElementById('chip-in'),
+            chipLow: () => document.getElementById('chip-low'),
+            chipOut: () => document.getElementById('chip-out'),
+            chipFast: () => document.getElementById('chip-fast'),
+        };
+
+        const page = {
+            size: 12,
+            current: 1,
+        };
+
+        const filters = {
+            q: '',
+            status: 'all', // all | in | low | out
+            category: '',
+            fast: false,
+        };
+
+        const cart = {
+            items: {}, // pid -> qty
+            add(pid, qty = 1) {
+                this.items[pid] = (this.items[pid] || 0) + qty;
+            }
+        };
+
+        const storeCache = {}; // pid -> rows
+        let currentPid = null;
+
+        const activity = {
+            max: 30,
+            key: "activityFeed",
+            items: [],
+            load() {
+                try {
+                    const raw = sessionStorage.getItem(this.key);
+                    this.items = raw ? JSON.parse(raw) : [];
+                } catch {
+                    this.items = [];
+                }
+            },
+            save() {
+                try { sessionStorage.setItem(this.key, JSON.stringify(this.items.slice(0, this.max))); } catch { }
+            },
+            push(message, meta) {
+                const evt = { message, meta: meta || "", ts: Date.now() };
+                this.items.unshift(evt);
+                this.items = this.items.slice(0, this.max);
+                this.save();
+                renderActivity();
+            }
+        };
+
+        const reservations = {
+            key: "activeReservations",
+            // pid -> { reservation_id, expires_at_ms }
+            map: {},
+            load() {
+                try {
+                    const raw = localStorage.getItem(this.key);
+                    this.map = raw ? JSON.parse(raw) : {};
+                } catch {
+                    this.map = {};
+                }
+            },
+            save() {
+                try { localStorage.setItem(this.key, JSON.stringify(this.map)); } catch { }
+            },
+            set(pid, reservation_id, expires_at_ms) {
+                this.map[pid] = { reservation_id, expires_at_ms };
+                this.save();
+            },
+            clear(pid) {
+                delete this.map[pid];
+                this.save();
+            },
+            get(pid) { return this.map[pid]; },
+            tick() {
+                const now = Date.now();
+                const entries = Object.entries(this.map);
+                let changed = false;
+                for (const [pid, r] of entries) {
+                    if (!r || !r.expires_at_ms) continue;
+                    if (r.expires_at_ms <= now) {
+                        delete this.map[pid];
+                        changed = true;
+                        activity.push("Reservation expired", pid);
+                    }
+                }
+                if (changed) this.save();
+                updateTimerBadges();
+            }
+        };
+
+        // =====================
+        // Helpers
+        // =====================
+        function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+        function fmt(n) { return (Number.isFinite(n) ? n : 0); }
+        function trustPct(p) { return Number.isFinite(p.trust_score) ? clamp(p.trust_score, 0, 100) : null; }
+
+        function escapeHtml(s) {
+            return String(s || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;');
+        }
+
+        const _imgDebugLogged = new Set();
+
+        function getImage(product) {
+            const queryRaw = product?.category || product?.name || product?.product_name || product?.product_id || "product";
+            const query = encodeURIComponent(String(queryRaw).trim() || "product");
+            const url = `https://source.unsplash.com/300x200/?${query}`;
+
+            // Debug missing fields (log once per SKU to avoid console spam on refresh)
+            const sku = product?.product_id || "(no_sku)";
+            if (!_imgDebugLogged.has(sku)) {
+                _imgDebugLogged.add(sku);
+                // Requested debug format (name/category); our dataset uses product_name.
+                console.log("Product:", product?.name || product?.product_name, "Category:", product?.category);
+            }
+
+            return url;
+        }
+
+        function stockBadge(p) {
+            const a = fmt(p.available_stock);
+            if (a <= 0) return { t: 'Out of Stock', c: 'b-red' };
+            if (a < 10) return { t: 'Low Stock', c: 'b-yellow' };
+            return { t: 'In Stock', c: 'b-green' };
+        }
+
+        function smartBadges(p) {
+            const badges = [];
+            const a = fmt(p.available_stock);
+            const d = fmt(p.predicted_demand);
+            const t = trustPct(p);
+
+            if (a > 0 && a < 10) badges.push({ t: 'Only Few Left', c: 'b-yellow' });
+            if (d >= 1.2) badges.push({ t: 'Selling Fast', c: 'b-indigo' });
+            if (t !== null && t < 45) badges.push({ t: 'Low Confidence', c: 'b-red' });
+            return badges;
+        }
+
+        function trustColor(p) {
+            const t = trustPct(p);
+            if (t === null) return 'rgba(255,255,255,0.18)';
+            if (t >= 80) return 'rgba(16,185,129,0.95)';
+            if (t >= 50) return 'rgba(245,158,11,0.95)';
+            return 'rgba(239,68,68,0.95)';
+        }
+
+        function matchesFilters(p) {
+            const q = filters.q.trim().toLowerCase();
+            const name = (p.product_name || '').toLowerCase();
+            const sku = (p.product_id || '').toLowerCase();
+            const cat = (p.product_name || '');
+            const a = fmt(p.available_stock);
+            const d = fmt(p.predicted_demand);
+
+            if (q && !(name.includes(q) || sku.includes(q))) return false;
+            if (filters.category && cat !== filters.category) return false;
+
+            if (filters.status === 'in' && a <= 0) return false;
+            if (filters.status === 'low' && !(a > 0 && a < 10)) return false;
+            if (filters.status === 'out' && a !== 0) return false;
+
+            if (filters.fast && !(d >= 1.2)) return false;
+            return true;
+        }
+
+        function buildCategories(items) {
+            const cats = Array.from(new Set(items.map(x => x.product_name).filter(Boolean))).sort();
+            const sel = ui.cat();
+            const current = sel.value;
+            sel.innerHTML = `<option value="">All categories</option>` + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            sel.value = current;
+        }
+
+        // =====================
+        // Filters UI handlers
+        // =====================
+        function setStatusFilter(s) {
+            filters.status = s;
+            [ui.chipAll(), ui.chipIn(), ui.chipLow(), ui.chipOut()].forEach(x => x.classList.remove('active'));
+            if (s === 'all') ui.chipAll().classList.add('active');
+            if (s === 'in') ui.chipIn().classList.add('active');
+            if (s === 'low') ui.chipLow().classList.add('active');
+            if (s === 'out') ui.chipOut().classList.add('active');
+            page.current = 1;
+            apply();
+        }
+
+        function setCategory(c) {
+            filters.category = c || '';
+            page.current = 1;
+            apply();
+        }
+
+        function toggleFast() {
+            filters.fast = !filters.fast;
+            ui.chipFast().classList.toggle('active', filters.fast);
+            page.current = 1;
+            apply();
+        }
+
+        // =====================
+        // Data fetch
+        // =====================
+        let isFetching = false;
+        async function updateData() {
+            if (isFetching) return;
+            isFetching = true;
+            ui.loading().style.display = '';
+            try {
+                const res = await fetch('/stock');
+                if (!res.ok) throw new Error('Failed to fetch /stock');
+                const next = await res.json();
+                lastUpdatedAt = new Date();
+
+                // Detect stock changes for activity feed (best-effort).
+                if (all && all.length) {
+                    const prevMap = new Map(all.map(p => [p.product_id, p]));
+                    for (const p of next) {
+                        const prev = prevMap.get(p.product_id);
+                        if (!prev) continue;
+                        const prevA = fmt(prev.available_stock);
+                        const nextA = fmt(p.available_stock);
+                        if (prevA !== nextA) {
+                            activity.push("Stock updated", `${p.product_id} • avail ${prevA} → ${nextA}`);
+                        }
+                    }
+                }
+
+                all = next;
+                buildCategories(all);
+                apply();
+                renderSummary(all);
+
+                document.getElementById('pulse-dot').style.backgroundColor = 'var(--success)';
+                document.getElementById('sync-text').innerText = 'Live Sync: Active';
+                ui.lastUpdated().innerText = `Updated ${lastUpdatedAt.toLocaleTimeString()}`;
+            } catch (e) {
+                document.getElementById('pulse-dot').style.backgroundColor = 'var(--danger)';
+                document.getElementById('sync-text').innerText = 'Error connecting...';
+                ui.lastUpdated().innerText = 'Update failed';
+            } finally {
+                ui.loading().style.display = 'none';
+                isFetching = false;
+            }
+        }
+
+        // =====================
+        // Rendering
+        // =====================
+        function renderSummary(items) {
+            const total = items.length;
+            const low = items.filter(p => fmt(p.available_stock) > 0 && fmt(p.available_stock) < 10).length;
+            const out = items.filter(p => fmt(p.available_stock) === 0).length;
+            const rsvUnits = items.reduce((sum, p) => sum + fmt(p.reserved_stock), 0);
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-low').innerText = low;
+            document.getElementById('stat-out').innerText = out;
+            document.getElementById('stat-rsv').innerText = rsvUnits;
+
+            const banner = document.getElementById('low-stock-banner');
+            if (banner) banner.style.display = low > 0 ? '' : 'none';
+        }
+
+        function apply() {
+            filtered = all.filter(matchesFilters);
+            const totalFiltered = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalFiltered / page.size));
+            page.current = clamp(page.current, 1, totalPages);
+
+            const startIdx = (page.current - 1) * page.size;
+            const endIdx = Math.min(startIdx + page.size, totalFiltered);
+            const showing = totalFiltered ? `Showing ${startIdx + 1}–${endIdx} of ${totalFiltered}` : `Showing 0 of 0`;
+            ui.countSub().innerText = `${showing} • ${all.length} total products`;
+
+            renderGrid(filtered.slice(startIdx, endIdx));
+            renderPager(totalFiltered);
+            renderRecommended(all);
+        }
+
+        function renderSkeleton(host, n = 8) {
+            host.innerHTML = Array.from({ length: n }).map(() => `
+                <div class="card" style="cursor:default;">
+                    <div class="top">
+                        <div style="flex:1;">
+                            <div class="skeleton" style="height:16px; border-radius:8px; width:70%;"></div>
+                            <div class="skeleton" style="height:10px; border-radius:8px; width:40%; margin-top:10px;"></div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                            <div class="skeleton" style="height:22px; width:76px; border-radius:999px;"></div>
+                            <div class="skeleton" style="height:22px; width:84px; border-radius:999px;"></div>
+                        </div>
+                    </div>
+                    <div class="metrics">
+                        <div class="m skeleton" style="height:64px;"></div>
+                        <div class="m skeleton" style="height:64px;"></div>
+                    </div>
+                    <div class="trust">
+                        <div class="bar skeleton"></div>
+                        <div class="pct skeleton" style="height:12px; border-radius:6px;"></div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-ghost skeleton" disabled style="height:44px;"></button>
+                        <button class="btn-primary skeleton" disabled style="height:44px;"></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecommended(items) {
+            const host = ui.reco();
+            if (!items.length) return;
+            const scored = items.map(p => {
+                const d = fmt(p.predicted_demand);
+                const a = fmt(p.available_stock);
+                const t = trustPct(p);
+                const trustFactor = (t === null ? 0.85 : (t / 100));
+                const s = (d * 3 + Math.sqrt(Math.max(0, a))) * trustFactor;
+                return { p, s };
+            }).sort((x, y) => y.s - x.s).slice(0, 10).map(x => x.p);
+
+            ui.recoSub().innerText = `${scored.length} picks`;
+            host.innerHTML = scored.map(p => cardHtml(p)).join('');
+        }
+
+        function renderGrid(items) {
+            const host = ui.grid();
+            if (!items.length) {
+                host.innerHTML = `<div style="grid-column:1/-1; background:var(--surface); border:1px solid var(--border); border-radius:1.25rem; padding:1.2rem 1.2rem; color:var(--text-dim);">
+                    No products match your filters.
+                </div>`;
+                return;
+            }
+            host.innerHTML = items.map(p => cardHtml(p)).join('');
+        }
+
+        function renderPager(totalFiltered) {
+            const pager = ui.pager();
+            if (!totalFiltered) {
+                pager.style.display = 'none';
+                return;
+            }
+
+            const totalPages = Math.max(1, Math.ceil(totalFiltered / page.size));
+            pager.style.display = totalPages > 1 ? '' : 'none';
+
+            const startIdx = (page.current - 1) * page.size;
+            const endIdx = Math.min(startIdx + page.size, totalFiltered);
+            ui.pagerInfo().innerText = `Showing ${startIdx + 1}–${endIdx} of ${totalFiltered} products`;
+
+            const maxButtons = 7;
+            const pagesEl = ui.pagerPages();
+            const buttons = [];
+
+            function btn(label, p, disabled = false, active = false) {
+                const cls = ['page-btn', disabled ? 'disabled' : '', active ? 'active' : ''].filter(Boolean).join(' ');
+                const click = disabled ? '' : `onclick="goPage(${p})"`;
+                return `<div class="${cls}" ${click}>${label}</div>`;
+            }
+
+            buttons.push(btn('← Prev', page.current - 1, page.current === 1));
+
+            let start = Math.max(1, page.current - Math.floor(maxButtons / 2));
+            let end = Math.min(totalPages, start + maxButtons - 1);
+            start = Math.max(1, end - maxButtons + 1);
+
+            for (let p = start; p <= end; p++) {
+                buttons.push(btn(String(p), p, false, p === page.current));
+            }
+
+            buttons.push(btn('Next →', page.current + 1, page.current === totalPages));
+            pagesEl.innerHTML = buttons.join('');
+        }
+
+        function goPage(p) {
+            const totalPages = Math.max(1, Math.ceil(filtered.length / page.size));
+            page.current = clamp(p, 1, totalPages);
+            apply();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cardHtml(p) {
+            const stock = stockBadge(p);
+            const sb = smartBadges(p);
+
+            const a = fmt(p.available_stock);
+            const buyDisabled = a <= 0;
+
+            const shownBadges = [
+                { t: stock.t, c: stock.c },
+                ...sb.slice(0, 2),
+            ];
+
+            const rsv = reservations.get(p.product_id);
+            const timerBadge = rsv ? `<span class="badge timer-badge" id="rsv-${p.product_id}">⏳ ${formatRemaining(rsv.expires_at_ms)}</span>` : '';
+
+            const total = Math.max(0, fmt(p.total_stock));
+            const pct = total > 0 ? clamp((a / total) * 100, 0, 100) : (a > 0 ? 100 : 0);
+            const pColor = a <= 0 ? 'rgba(239,68,68,0.95)' : (a < 10 ? 'rgba(245,158,11,0.95)' : 'rgba(16,185,129,0.95)');
+            const availCls = a <= 0 ? 'avail out' : (a < 10 ? 'avail low' : 'avail');
+
+            return `
+                <div class="card" onclick="openProduct('${p.product_id}')">
+                    <div class="img-wrap">
+                        <img class="card-img"
+                            src="${getImage(p)}"
+                            alt="${escapeHtml(p.product_name || 'Product')}"
+                            loading="lazy"
+                            onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200';">
+                    </div>
+                    <div class="card-body">
+                        <div class="top">
+                            <div>
+                                <div class="name">${escapeHtml(p.product_name || 'Unnamed Product')}</div>
+                                <div class="sku">${escapeHtml(p.product_id)}</div>
+                            </div>
+                            <div class="badges">
+                                ${shownBadges.map(b => `<span class="badge ${b.c}">${escapeHtml(b.t)}</span>`).join('')}
+                                ${timerBadge}
+                            </div>
+                        </div>
+
+                        <div class="line">
+                            <div class="k">Available</div>
+                            <div class="v ${availCls}">${a}</div>
+                        </div>
+                        <div class="line">
+                            <div class="k">Demand</div>
+                            <div class="v">${fmt(p.predicted_demand)} <span style="color:var(--text-dim); font-size:0.85rem; font-weight:800;">/day</span></div>
+                        </div>
+                        <div class="progress" title="Stock level">
+                            <div style="width:${pct}%; background:${pColor};"></div>
+                        </div>
+
+                        ${buyDisabled ? `
+                            <div class="actions one" onclick="event.stopPropagation()">
+                                <button class="btn-danger" onclick="openNotify('${p.product_id}')">Notify Me</button>
+                            </div>
+                        ` : `
+                            <div class="actions" onclick="event.stopPropagation()">
+                                <button class="btn-ghost" onclick="addToCartQuick('${p.product_id}')">Add to Cart</button>
+                                <button class="btn-primary" onclick="buyNowQuick('${p.product_id}')">Buy Now</button>
+                                <button class="btn-primary" onclick="openReserve('${p.product_id}')">Reserve</button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // =====================
+        // UI helpers
+        // =====================
+        function setupModal(title, sub, formHtml, callback) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-subtitle').innerText = sub;
+            document.getElementById('modal-form-area').innerHTML = formHtml;
+            document.getElementById('modal-submit-btn').onclick = callback;
+            document.getElementById('action-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('action-modal').style.display = 'none';
+        }
+
+        function showToast(msg) {
+            const host = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerText = msg;
+            host.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4000);
+        }
+
+        // =====================
+        // Actions
+        // =====================
+        function openReserve(pid) {
+            const p = all.find(x => x.product_id === pid);
+            setupModal(`Reserve ${p?.product_name || pid}`, 'How many units would you like to lock for 10 minutes?',
+                `<input type="number" id="qty-input" value="1" min="1" step="1" placeholder="Quantity">`,
+                () => submitReserve(pid));
+        }
+
+        async function submitReserve(pid) {
+            const qty = parseInt(document.getElementById('qty-input').value, 10);
+            if (!Number.isFinite(qty) || qty <= 0) return showToast('⚠️ Quantity must be > 0');
+
+            try {
+                const res = await fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: pid, quantity: qty })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return showToast(`❌ ${data.detail || data.message || 'Reserve failed'}`);
+                if (data.success) {
+                    showToast(`✅ Reservation successful • ID ${data.reservation_id}`);
+                    const expMs = parseExpiresAtToMs(data.expires_at);
+                    if (expMs) {
+                        reservations.set(pid, data.reservation_id, expMs);
+                        activity.push("Product reserved", `${pid} • ${formatRemaining(expMs)}`);
+                    } else {
+                        activity.push("Product reserved", pid);
+                    }
+                    closeModal();
+                } else {
+                    showToast(`❌ ${data.message || 'Out of stock'}`);
+                }
+            } catch (e) {
+                showToast('❌ Network error');
+            } finally {
+                updateData();
+            }
+        }
+
+        function openNotify(pid) {
+            const p = all.find(x => x.product_id === pid);
+            setupModal(`Notify me • ${p?.product_name || pid}`, 'We will notify you immediately when stock returns.',
+                `<input type="email" id="email-input" placeholder="your@email.com">`,
+                () => submitWaitlist(pid));
+        }
+
+        async function submitWaitlist(pid) {
+            const email = (document.getElementById('email-input').value || '').trim();
+            if (!email) return showToast('⚠️ Email required');
+            try {
+                const res = await fetch('/join_waitlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: pid, email })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return showToast(`❌ ${data.detail || 'Waitlist failed'}`);
+                if (data.success) {
+                    showToast(`✅ Added to waitlist • ${email}`);
+                    activity.push("Waitlist joined", `${pid} • ${email}`);
+                    closeModal();
+                } else {
+                    showToast(`❌ ${data.detail || 'Waitlist failed'}`);
+                }
+            } catch (e) {
+                showToast('❌ Network error');
+            }
+        }
+
+        function addToCartQuick(pid) {
+            cart.add(pid, 1);
+            showToast(`🛒 Added to cart • ${pid}`);
+        }
+
+        async function buyNowQuick(pid) {
+            try {
+                const r1 = await fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: pid, quantity: 1 })
+                });
+                const data = await r1.json().catch(() => ({}));
+                if (!r1.ok || !data.success) return showToast(`❌ ${data.message || data.detail || 'Reserve failed'}`);
+
+                const r2 = await fetch('/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reservation_id: data.reservation_id })
+                });
+                const c = await r2.json().catch(() => ({}));
+                if (!r2.ok || !c.success) return showToast(`❌ ${c.detail || 'Confirm failed'}`);
+
+                showToast(`✅ Purchase confirmed • ${pid}`);
+                activity.push("Purchase confirmed", pid);
+            } catch (e) {
+                showToast('❌ Network error');
+            } finally {
+                updateData();
+            }
+        }
+
+        // =====================
+        // Reservation timer helpers
+        // =====================
+        function parseExpiresAtToMs(expiresAt) {
+            if (!expiresAt) return null;
+            // Backend format: "YYYY-MM-DD HH:MM:SS" (UTC-ish). Convert to ISO and assume UTC.
+            const s = String(expiresAt).trim();
+            const iso = s.includes("T") ? s : s.replace(" ", "T") + "Z";
+            const ms = Date.parse(iso);
+            return Number.isFinite(ms) ? ms : null;
+        }
+
+        function formatRemaining(expiresMs) {
+            const now = Date.now();
+            const diff = Math.max(0, expiresMs - now);
+            const m = Math.floor(diff / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+
+        function updateTimerBadges() {
+            const entries = Object.entries(reservations.map);
+            for (const [pid, r] of entries) {
+                const el = document.getElementById(`rsv-${pid}`);
+                if (!el) continue;
+                el.textContent = `⏳ ${formatRemaining(r.expires_at_ms)}`;
+            }
+        }
+
+        // =====================
+        // Activity feed
+        // =====================
+        function renderActivity() {
+            const list = document.getElementById("feed-list");
+            const sub = document.getElementById("feed-sub");
+            if (!list || !sub) return;
+
+            sub.textContent = `${activity.items.length} events`;
+            list.innerHTML = activity.items.map(e => `
+                <div class="evt">
+                    <div class="m">${escapeHtml(e.message)}</div>
+                    <div class="meta">
+                        <div>${escapeHtml(e.meta || "")}</div>
+                        <div>${new Date(e.ts).toLocaleTimeString()}</div>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        // =====================
+        // Product details modal
+        // =====================
+        function closeProductModal() {
+            document.getElementById('product-modal').style.display = 'none';
+            currentPid = null;
+        }
+
+        async function fetchStoreInventory(pid) {
+            const res = await fetch(`/store_inventory/${pid}`);
+            const data = await res.json().catch(() => []);
+            if (!res.ok) throw new Error(data.detail || 'Failed to load store inventory');
+            return Array.isArray(data) ? data : [];
+        }
+
+        function demandBars(ctx, demand, avail) {
+            const w = ctx.canvas.width;
+            const h = ctx.canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const max = Math.max(1, demand * 2, avail);
+            const bars = [
+                { label: 'Demand/day', value: demand, color: 'rgba(99,102,241,0.85)' },
+                { label: 'Available', value: avail, color: 'rgba(16,185,129,0.85)' },
+            ];
+
+            const pad = 16;
+            const bw = (w - pad * 2) / 2 - 10;
+            const base = h - 18;
+
+            ctx.font = '12px Outfit, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            ctx.fillText('Signal', 8, 14);
+
+            bars.forEach((b, i) => {
+                const x = pad + i * (bw + 20);
+                const bh = Math.round((b.value / max) * (h - 42));
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                ctx.fillRect(x, base - (h - 42), bw, (h - 42));
+                ctx.fillStyle = b.color;
+                ctx.fillRect(x, base - bh, bw, bh);
+                ctx.fillStyle = 'rgba(255,255,255,0.78)';
+                ctx.fillText(String(b.value), x, base + 14);
+            });
+        }
+
+        function trustExplain(p) {
+            const t = trustPct(p);
+            if (t === null) return 'Trust score unavailable (no audit data).';
+            if (t >= 80) return 'High confidence: audit records closely match actual stock.';
+            if (t >= 50) return 'Medium confidence: some drift between recorded and actual.';
+            return 'Low confidence: audit discrepancies suggest this stock may be less reliable.';
+        }
+
+        async function openProduct(pid) {
+            currentPid = pid;
+            const p = all.find(x => x.product_id === pid);
+            if (!p) return;
+
+            const stock = stockBadge(p);
+            document.getElementById('p-title').innerText = p.product_name || pid;
+            document.getElementById('p-sub').innerText = `${pid} • ${stock.t}`;
+            document.getElementById('p-avail').innerText = fmt(p.available_stock);
+            document.getElementById('p-total').innerText = `${fmt(p.total_stock)} total • ${fmt(p.reserved_stock)} reserved`;
+
+            const t = trustPct(p);
+            document.getElementById('p-trust').innerText = `Trust: ${t === null ? '—' : Math.round(t) + '%'} • Demand: ${fmt(p.predicted_demand)} /day`;
+            document.getElementById('p-explain').innerText = trustExplain(p);
+
+            const buyDisabled = fmt(p.available_stock) <= 0;
+            document.getElementById('p-buy').disabled = buyDisabled;
+            document.getElementById('p-reserve').disabled = buyDisabled;
+            document.getElementById('p-notify').disabled = !buyDisabled;
+
+            const ctx = document.getElementById('demand-chart').getContext('2d');
+            demandBars(ctx, fmt(p.predicted_demand), fmt(p.available_stock));
+
+            document.getElementById('p-stores').innerHTML = `<div class="store-item2 skeleton" style="height:42px;"></div><div class="store-item2 skeleton" style="height:42px;"></div>`;
+            document.getElementById('p-stores-sub').innerText = 'Loading…';
+            document.getElementById('product-modal').style.display = 'flex';
+
+            try {
+                if (!storeCache[pid]) storeCache[pid] = await fetchStoreInventory(pid);
+                const rows = storeCache[pid];
+                const availableStores = rows.filter(r => (r.stock || 0) > 0).length;
+                document.getElementById('p-stores-sub').innerText = `Available in ${availableStores} store${availableStores === 1 ? '' : 's'}`;
+                document.getElementById('p-stores').innerHTML = rows.map(r => `
+                    <div class="store-item2">
+                        <div>${escapeHtml(r.store_name)}</div>
+                        <div class="qty">${fmt(r.stock)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('p-stores-sub').innerText = 'Failed to load stores';
+                document.getElementById('p-stores').innerHTML = '';
+            }
+        }
+
+        function addToCart() {
+            if (!currentPid) return;
+            cart.add(currentPid, 1);
+            showToast(`🛒 Added to cart • ${currentPid}`);
+        }
+
+        function reserveFromDetail() {
+            if (!currentPid) return;
+            const pid = currentPid;
+            closeProductModal();
+            openReserve(pid);
+        }
+
+        function notifyFromDetail() {
+            if (!currentPid) return;
+            const pid = currentPid;
+            closeProductModal();
+            openNotify(pid);
+        }
+
+        function buyNow() {
+            if (!currentPid) return;
+            const pid = currentPid;
+            closeProductModal();
+            buyNowQuick(pid);
+        }
+
+        // =====================
+        // Init
+        // =====================
+        activity.load();
+        reservations.load();
+        renderActivity();
+        updateTimerBadges();
+        setInterval(() => reservations.tick(), 1000);
+
+        renderSkeleton(ui.grid(), 8);
+        renderSkeleton(ui.reco(), 5);
+
+        ui.q().addEventListener('input', (e) => {
+            filters.q = e.target.value || '';
+            page.current = 1;
+            apply();
+        });
+
+        updateData();
+        setInterval(updateData, REFRESH_RATE);
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus | Customer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050507;
+      --surface: #0f0f13;
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --text: #ffffff;
+      --text-dim: #8a8a98;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.6rem;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.05), transparent 40%);
+    }
+
+    .container {
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .brand h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #ffffff, #a5a5b1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand p {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: inline-flex;
+      gap: 0.55rem;
+      align-items: center;
+      font-weight: 800;
+    }
+
+    .btn {
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.95rem;
+      font-size: 0.85rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      user-select: none;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: rgba(99, 102, 241, 0.35);
+      box-shadow: 0 10px 30px -18px var(--accent-glow);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.20);
+      color: #ffd0d0;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0.8rem 0 1.0rem;
+      flex-wrap: wrap;
+    }
+
+    .search {
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.75rem 0.9rem;
+      border-radius: 1rem;
+      box-shadow: 0 18px 45px -18px rgba(0, 0, 0, 0.55);
+    }
+
+    .search input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      font-weight: 800;
+    }
+
+    .chip.active {
+      background: rgba(99, 102, 241, 0.14);
+      border-color: rgba(99, 102, 241, 0.35);
+      color: #d9dbff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 16px;
+      box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.75);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 0;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(99, 102, 241, 0.35);
+      box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.85);
+    }
+
+    .img-wrap {
+      width: 100%;
+      height: 160px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      flex: 0 0 auto;
+    }
+
+    .card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-body {
+      padding-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .name {
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .sku {
+      margin-top: 0.25rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 900;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .b-green { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.25); color: #bff7df; }
+    .b-yellow{ background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #ffe8b8; }
+    .b-red   { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.25);  color: #ffd0d0; }
+    .b-indigo{ background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.25); color: #d9dbff; }
+
+    .line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .line .k {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-weight: 750;
+    }
+
+    .line .v {
+      font-weight: 950;
+      letter-spacing: -0.02em;
+    }
+
+    .avail { color: var(--success); font-size: 1.25rem; }
+    .avail.low { color: var(--warning); }
+    .avail.out { color: var(--danger); }
+
+    .progress {
+      margin-top: 6px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .progress>div {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .actions.one { grid-template-columns: 1fr; }
+
+    /* Modals */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.25rem;
+      border-radius: 1.25rem;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-card h3 { margin-bottom: 0.25rem; }
+    .modal-card p { color: var(--text-dim); margin-bottom: 0.85rem; }
+
+    .row { display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+    .field { flex: 1; min-width: 200px; }
+    .field label { display:block; color: var(--text-dim); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.35rem; }
+    .field input, .field select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      padding: 0.75rem 0.9rem;
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .list { display: flex; flex-direction: column; gap: 10px; margin-top: 0.5rem; }
+    .item {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.18);
+      border-radius: 1rem;
+      padding: 0.8rem 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+    }
+    .item .meta { color: var(--text-dim); font-size: 0.82rem; }
+    .item .t { font-weight: 900; }
+
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .toast {
+      background: #1e1e26;
+      border: 1px solid var(--border);
+      padding: 0.9rem 1.1rem;
+      border-radius: 1rem;
+      color: white;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      font-size: 0.9rem;
+      animation: slide-in 0.25s ease-out;
+      max-width: 460px;
+    }
+
+    @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>Nexus</h1>
+        <p>Customer app — shop, reserve, choose a store</p>
+      </div>
+      <div class="header-actions">
+        <div class="pill" id="sync">Live: —</div>
+        <button class="btn" onclick="openReservations()">Reservations</button>
+        <button class="btn btn-primary" onclick="openCart()">Cart (<span id="cart-count">0</span>)</button>
+      </div>
+    </header>
+
+    <div class="topbar">
+      <div class="search">
+        <span style="color:var(--text-dim); font-weight:900;">⌕</span>
+        <input id="q" placeholder="Search products by name or SKU…">
+      </div>
+      <div class="filters">
+        <div class="chip active" id="chip-all" onclick="setStatus('all')">All</div>
+        <div class="chip" id="chip-in" onclick="setStatus('in')">In stock</div>
+        <div class="chip" id="chip-low" onclick="setStatus('low')">Low</div>
+        <div class="chip" id="chip-out" onclick="setStatus('out')">Out</div>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="pager" id="pager" style="display:none; margin-top: 18px;">
+      <div class="info" id="pager-info" style="color:var(--text-dim); font-weight:800;">—</div>
+      <div class="pages" id="pager-pages" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Cart Modal -->
+  <div id="cart-modal" class="modal" onclick="if(event.target===this) closeCart()">
+    <div class="modal-card">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <h3>Your Cart</h3>
+          <p id="cart-sub">—</p>
+        </div>
+        <button class="btn" onclick="closeCart()">Close</button>
+      </div>
+      <div class="list" id="cart-list"></div>
+      <div class="row" style="margin-top: 0.9rem; justify-content: flex-end;">
+        <button class="btn btn-primary" onclick="checkoutCart()">Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reservations Modal -->
+  <div id="rsv-modal" class="modal" onclick="if(event.target===this) closeReservations()">
+    <div class="modal-card">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <h3>Reservations</h3>
+          <p>Reserved items with expiry timers</p>
+        </div>
+        <button class="btn" onclick="closeReservations()">Close</button>
+      </div>
+      <div class="list" id="rsv-list"></div>
+    </div>
+  </div>
+
+  <!-- Store selection modal -->
+  <div id="store-modal" class="modal" onclick="if(event.target===this) closeStoreModal()">
+    <div class="modal-card">
+      <h3>Choose store</h3>
+      <p>Select a store for this purchase, or choose “Any Store”.</p>
+      <div class="row">
+        <div class="field">
+          <label for="store-select">Store</label>
+          <select id="store-select">
+            <option value="ANY">Any Store</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 140px; min-width:140px;">
+          <label for="store-qty">Qty</label>
+          <input id="store-qty" type="number" value="1" min="1" step="1">
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top: 0.9rem;">
+        <button class="btn" onclick="closeStoreModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmStorePurchase()">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PAGE_SIZE = 12;
+    const state = { all: [], filtered: [], status: 'all', q: '', page: 1 };
+    const cartKey = 'cartItems';   // pid -> qty
+    const rsvKey = 'activeReservations'; // pid -> { reservation_id, expires_at_ms }
+    let pendingBuy = null; // { product_id, mode: 'buy'|'checkout', qty }
+    let storesCache = null;
+
+    function toast(msg) {
+      const host = document.getElementById('toast');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerText = msg;
+      host.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 250); }, 3200);
+    }
+
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+    function fmt(n) { return (Number.isFinite(n) ? n : 0); }
+    function escapeHtml(s) {
+      return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+    }
+
+    function getCart() {
+      try { return JSON.parse(localStorage.getItem(cartKey) || '{}'); } catch { return {}; }
+    }
+    function setCart(c) { localStorage.setItem(cartKey, JSON.stringify(c)); renderCartCount(); }
+    function getReservations() {
+      try { return JSON.parse(localStorage.getItem(rsvKey) || '{}'); } catch { return {}; }
+    }
+    function setReservations(m) { localStorage.setItem(rsvKey, JSON.stringify(m)); }
+
+    function getImage(product) {
+      const queryRaw = product?.category || product?.name || product?.product_name || product?.product_id || "product";
+      const query = encodeURIComponent(String(queryRaw).trim() || "product");
+      return `https://source.unsplash.com/300x200/?${query}`;
+    }
+
+    function stockBadge(p) {
+      const a = fmt(p.available_stock);
+      if (a <= 0) return { t: 'Out of Stock', c: 'b-red' };
+      if (a < 10) return { t: 'Low Stock', c: 'b-yellow' };
+      return { t: 'In Stock', c: 'b-green' };
+    }
+
+    function smartBadges(p) {
+      const a = fmt(p.available_stock);
+      const d = fmt(p.predicted_demand);
+      const b = [];
+      if (a > 0 && a < 10) b.push({ t: 'Only Few Left', c: 'b-yellow' });
+      if (d >= 1.2) b.push({ t: 'Selling Fast', c: 'b-indigo' });
+      return b;
+    }
+
+    function matches(p) {
+      const q = state.q.trim().toLowerCase();
+      const name = (p.product_name || '').toLowerCase();
+      const sku = (p.product_id || '').toLowerCase();
+      const a = fmt(p.available_stock);
+      if (q && !(name.includes(q) || sku.includes(q))) return false;
+      if (state.status === 'in' && a <= 0) return false;
+      if (state.status === 'low' && !(a > 0 && a < 10)) return false;
+      if (state.status === 'out' && a !== 0) return false;
+      return true;
+    }
+
+    function setStatus(s) {
+      state.status = s;
+      ['all','in','low','out'].forEach(k => document.getElementById('chip-'+k).classList.remove('active'));
+      document.getElementById('chip-'+s).classList.add('active');
+      state.page = 1;
+      apply();
+    }
+
+    function renderCartCount() {
+      const c = getCart();
+      const n = Object.values(c).reduce((sum, x) => sum + (parseInt(x,10)||0), 0);
+      document.getElementById('cart-count').innerText = n;
+    }
+
+    function apply() {
+      state.filtered = state.all.filter(matches);
+      renderPage();
+    }
+
+    function renderPage() {
+      const total = state.filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      state.page = clamp(state.page, 1, totalPages);
+      const start = (state.page - 1) * PAGE_SIZE;
+      const end = Math.min(start + PAGE_SIZE, total);
+      const slice = state.filtered.slice(start, end);
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = slice.map(p => cardHtml(p)).join('');
+      renderPager(total, start, end, totalPages);
+    }
+
+    function renderPager(total, start, end, totalPages) {
+      const pager = document.getElementById('pager');
+      const info = document.getElementById('pager-info');
+      const pages = document.getElementById('pager-pages');
+      if (!total || totalPages <= 1) { pager.style.display = 'none'; return; }
+      pager.style.display = '';
+      info.innerText = `Showing ${start+1}–${end} of ${total} products`;
+
+      const btn = (label, p, disabled=false, active=false) => {
+        const el = document.createElement('div');
+        el.className = 'btn' + (active ? ' btn-primary' : '');
+        el.style.borderRadius = '999px';
+        el.style.padding = '0.55rem 0.8rem';
+        el.style.opacity = disabled ? '0.35' : '1';
+        el.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        el.innerText = label;
+        if (!disabled) el.onclick = () => { state.page = p; renderPage(); window.scrollTo({top:0, behavior:'smooth'}); };
+        return el;
+      };
+
+      pages.innerHTML = '';
+      pages.appendChild(btn('← Prev', state.page-1, state.page===1));
+      const maxButtons = 5;
+      let s = Math.max(1, state.page - Math.floor(maxButtons/2));
+      let e = Math.min(totalPages, s + maxButtons - 1);
+      s = Math.max(1, e - maxButtons + 1);
+      for (let p = s; p <= e; p++) pages.appendChild(btn(String(p), p, false, p===state.page));
+      pages.appendChild(btn('Next →', state.page+1, state.page===totalPages));
+    }
+
+    function formatRemaining(expiresMs) {
+      const diff = Math.max(0, expiresMs - Date.now());
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function cardHtml(p) {
+      const stock = stockBadge(p);
+      const extras = smartBadges(p).slice(0,1);
+      const a = fmt(p.available_stock);
+      const total = Math.max(0, fmt(p.total_stock));
+      const pct = total > 0 ? clamp((a/total)*100, 0, 100) : (a>0?100:0);
+      const pColor = a<=0 ? 'rgba(239,68,68,0.95)' : (a<10 ? 'rgba(245,158,11,0.95)' : 'rgba(16,185,129,0.95)');
+      const availCls = a<=0 ? 'avail out' : (a<10 ? 'avail low' : 'avail');
+
+      const rsvMap = getReservations();
+      const rsv = rsvMap[p.product_id];
+      const timerBadge = rsv ? `<span class="badge b-indigo">⏳ ${formatRemaining(rsv.expires_at_ms)}</span>` : '';
+
+      const buttons = a<=0
+        ? `<div class="actions one" onclick="event.stopPropagation()"><button class="btn btn-danger" onclick="notifyMe('${p.product_id}')">Notify Me</button></div>`
+        : `<div class="actions" onclick="event.stopPropagation()">
+            <button class="btn" onclick="addToCart('${p.product_id}')">Add to Cart</button>
+            <button class="btn btn-primary" onclick="buyNow('${p.product_id}')">Buy Now</button>
+            <button class="btn btn-primary" onclick="reserve('${p.product_id}')">Reserve</button>
+           </div>`;
+
+      return `
+        <div class="card" onclick="openDetails('${p.product_id}')">
+          <div class="img-wrap">
+            <img class="card-img" src="${getImage(p)}" alt="product image"
+              loading="lazy"
+              onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200';">
+          </div>
+          <div class="card-body">
+            <div class="top">
+              <div>
+                <div class="name">${escapeHtml(p.product_name || 'Product')}</div>
+                <div class="sku">${escapeHtml(p.product_id)}</div>
+              </div>
+              <div class="badges">
+                <span class="badge ${stock.c}">${stock.t}</span>
+                ${extras.map(b => `<span class="badge ${b.c}">${b.t}</span>`).join('')}
+                ${timerBadge}
+              </div>
+            </div>
+            <div class="line"><div class="k">Available</div><div class="v ${availCls}">${a}</div></div>
+            <div class="line"><div class="k">Demand</div><div class="v">${fmt(p.predicted_demand)} <span style="color:var(--text-dim); font-size:0.85rem; font-weight:800;">/day</span></div></div>
+            <div class="progress"><div style="width:${pct}%; background:${pColor};"></div></div>
+            ${buttons}
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchStock() {
+      const res = await fetch('/stock');
+      if (!res.ok) throw new Error('Failed /stock');
+      return await res.json();
+    }
+
+    async function fetchStores() {
+      const res = await fetch('/api/stores');
+      if (!res.ok) return [];
+      return await res.json();
+    }
+
+    async function reserve(pid, qty=1) {
+      const res = await fetch('/reserve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ product_id: pid, quantity: qty }) });
+      const data = await res.json().catch(()=> ({}));
+      if (!res.ok) throw new Error(data.detail || data.message || 'Reserve failed');
+      if (!data.success) throw new Error(data.message || 'Out of stock');
+
+      const expMs = Date.parse(String(data.expires_at).replace(' ', 'T') + 'Z');
+      const map = getReservations();
+      map[pid] = { reservation_id: data.reservation_id, expires_at_ms: expMs };
+      setReservations(map);
+      toast(`Reserved • ${pid} • ${formatRemaining(expMs)}`);
+      return data;
+    }
+
+    async function releaseReservation(pid) {
+      const map = getReservations();
+      const r = map[pid];
+      if (!r) return;
+      await fetch('/release', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ reservation_id: r.reservation_id }) });
+      delete map[pid];
+      setReservations(map);
+      toast(`Reservation released • ${pid}`);
+      await refresh();
+    }
+
+    async function purchaseReservation(reservation_id, store_id) {
+      const res = await fetch('/purchase', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ reservation_id, store_id }) });
+      const data = await res.json().catch(()=> ({}));
+      if (!res.ok) throw new Error(data.detail || 'Purchase failed');
+      return data;
+    }
+
+    function addToCart(pid) {
+      const c = getCart();
+      c[pid] = (c[pid] || 0) + 1;
+      setCart(c);
+      toast(`Added to cart • ${pid}`);
+    }
+
+    async function buyNow(pid) {
+      pendingBuy = { product_id: pid, mode: 'buy', qty: 1 };
+      await openStoreModal();
+    }
+
+    async function notifyMe(pid) {
+      const email = prompt('Enter your email to be notified:');
+      if (!email) return;
+      const res = await fetch('/join_waitlist', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ product_id: pid, email }) });
+      const data = await res.json().catch(()=> ({}));
+      if (!res.ok || !data.success) return toast(`Waitlist failed • ${pid}`);
+      toast(`Waitlist joined • ${pid}`);
+    }
+
+    function openDetails(pid) {
+      // Keep customer UI simple; details live in existing product modal (on the legacy page).
+      // For now, just open reserve panel if it’s low/out.
+      const p = state.all.find(x => x.product_id === pid);
+      if (!p) return;
+      if (fmt(p.available_stock) <= 0) return notifyMe(pid);
+      return buyNow(pid);
+    }
+
+    function openCart() {
+      renderCart();
+      document.getElementById('cart-modal').style.display = 'flex';
+    }
+    function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
+
+    function renderCart() {
+      const c = getCart();
+      const list = document.getElementById('cart-list');
+      const items = Object.entries(c);
+      document.getElementById('cart-sub').innerText = items.length ? `${items.length} item type(s)` : 'Cart is empty';
+      list.innerHTML = items.map(([pid, qty]) => `
+        <div class="item">
+          <div>
+            <div class="t">${escapeHtml(pid)}</div>
+            <div class="meta">Quantity: ${qty}</div>
+          </div>
+          <div class="row" style="gap:8px;">
+            <button class="btn" onclick="decCart('${pid}')">-</button>
+            <button class="btn" onclick="incCart('${pid}')">+</button>
+            <button class="btn btn-danger" onclick="removeCart('${pid}')">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function incCart(pid) { const c=getCart(); c[pid]=(c[pid]||0)+1; setCart(c); renderCart(); }
+    function decCart(pid) { const c=getCart(); c[pid]=Math.max(0,(c[pid]||0)-1); if(!c[pid]) delete c[pid]; setCart(c); renderCart(); }
+    function removeCart(pid) { const c=getCart(); delete c[pid]; setCart(c); renderCart(); }
+
+    async function checkoutCart() {
+      const c = getCart();
+      const items = Object.entries(c);
+      if (!items.length) return;
+      pendingBuy = { mode: 'checkout', items };
+      await openStoreModal();
+    }
+
+    function openReservations() {
+      renderReservations();
+      document.getElementById('rsv-modal').style.display = 'flex';
+    }
+    function closeReservations() { document.getElementById('rsv-modal').style.display = 'none'; }
+
+    function renderReservations() {
+      const map = getReservations();
+      const list = document.getElementById('rsv-list');
+      const entries = Object.entries(map);
+      if (!entries.length) {
+        list.innerHTML = `<div class="item"><div><div class="t">No active reservations</div><div class="meta">Reserve an item to see it here.</div></div></div>`;
+        return;
+      }
+      list.innerHTML = entries.map(([pid, r]) => `
+        <div class="item">
+          <div>
+            <div class="t">${escapeHtml(pid)}</div>
+            <div class="meta">⏳ ${formatRemaining(r.expires_at_ms)}</div>
+          </div>
+          <div class="row" style="gap:8px;">
+            <button class="btn btn-primary" onclick="buyReserved('${pid}')">Buy</button>
+            <button class="btn btn-danger" onclick="releaseReservation('${pid}')">Release</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function buyReserved(pid) {
+      const map = getReservations();
+      const r = map[pid];
+      if (!r) return;
+      pendingBuy = { product_id: pid, mode: 'reserved', reservation_id: r.reservation_id, qty: 1 };
+      await openStoreModal();
+    }
+
+    async function openStoreModal() {
+      if (!storesCache) storesCache = await fetchStores();
+      const sel = document.getElementById('store-select');
+      sel.innerHTML = `<option value="ANY">Any Store</option>` + storesCache.map(s => `<option value="${s.store_id}">${escapeHtml(s.city || s.store_id)} (${escapeHtml(s.store_id)})</option>`).join('');
+      document.getElementById('store-qty').value = '1';
+      document.getElementById('store-modal').style.display = 'flex';
+    }
+    function closeStoreModal() { document.getElementById('store-modal').style.display = 'none'; }
+
+    async function confirmStorePurchase() {
+      const store_id = document.getElementById('store-select').value || 'ANY';
+      const qty = parseInt(document.getElementById('store-qty').value, 10) || 1;
+      closeStoreModal();
+      try {
+        if (!pendingBuy) return;
+
+        if (pendingBuy.mode === 'buy') {
+          const r = await reserve(pendingBuy.product_id, qty);
+          await purchaseReservation(r.reservation_id, store_id);
+          // clear reservation map entry
+          const map = getReservations(); delete map[pendingBuy.product_id]; setReservations(map);
+          toast(`Purchased • ${pendingBuy.product_id} • store ${store_id}`);
+        }
+
+        if (pendingBuy.mode === 'reserved') {
+          await purchaseReservation(pendingBuy.reservation_id, store_id);
+          const map = getReservations(); delete map[pendingBuy.product_id]; setReservations(map);
+          toast(`Purchased • ${pendingBuy.product_id} • store ${store_id}`);
+        }
+
+        if (pendingBuy.mode === 'checkout') {
+          for (const [pid, q] of pendingBuy.items) {
+            const r = await reserve(pid, q);
+            await purchaseReservation(r.reservation_id, store_id);
+            const map = getReservations(); delete map[pid]; setReservations(map);
+          }
+          setCart({});
+          toast(`Checkout complete • store ${store_id}`);
+          closeCart();
+        }
+      } catch (e) {
+        toast(`❌ ${e.message || 'Purchase failed'}`);
+      } finally {
+        pendingBuy = null;
+        await refresh();
+      }
+    }
+
+    async function refresh() {
+      state.all = await fetchStock();
+      apply();
+      renderCartCount();
+      renderReservations();
+      document.getElementById('sync').innerText = `Live: ${new Date().toLocaleTimeString()}`;
+    }
+
+    // init
+    renderCartCount();
+    document.getElementById('q').addEventListener('input', (e) => { state.q = e.target.value || ''; state.page = 1; apply(); });
+    setInterval(() => {
+      // timers
+      const map = getReservations();
+      let changed = false;
+      for (const [pid, r] of Object.entries(map)) {
+        if (!r?.expires_at_ms) continue;
+        if (r.expires_at_ms <= Date.now()) { delete map[pid]; changed = true; }
+      }
+      if (changed) setReservations(map);
+      // rerender reservation list if open
+      if (document.getElementById('rsv-modal').style.display === 'flex') renderReservations();
+    }, 1000);
+
+    refresh().catch(() => toast('❌ Failed to load products'));
+    setInterval(() => refresh().catch(() => {}), 2500);
+  </script>
+</body>
+
+</html>
+
