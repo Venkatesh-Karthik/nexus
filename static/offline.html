@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus | Offline Cashier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050507;
+      --surface: #0f0f13;
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --text: #ffffff;
+      --text-dim: #8a8a98;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.6rem;
+      background-image:
+        radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.05), transparent 40%);
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { display:flex; justify-content: space-between; align-items:center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    h1 { font-weight: 900; letter-spacing: -0.02em; font-size: 1.7rem; background: linear-gradient(to right, #fff, #a5a5b1); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color: transparent; }
+    .sub { color: var(--text-dim); margin-top: 0.25rem; }
+    .pill { background: var(--surface); border:1px solid var(--border); padding: 0.55rem 0.9rem; border-radius:999px; color: var(--text-dim); font-weight: 900; font-size: 0.82rem; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--surface); border:1px solid var(--border); border-radius: 1.25rem; padding: 1rem; box-shadow: 0 24px 60px -28px rgba(0,0,0,0.75); }
+    .title { font-weight: 950; letter-spacing:-0.02em; margin-bottom: 0.25rem; }
+    label { display:block; color: var(--text-dim); font-size: 0.75rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.35rem; }
+    input, select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      padding: 0.75rem 0.9rem;
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+    }
+    .row { display:flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .field { flex: 1; min-width: 200px; }
+    .field.small { flex: 0 0 160px; min-width: 160px; }
+    .btn {
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.95rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-weight: 900;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: rgba(99,102,241,0.35); }
+    .btn-primary { background: var(--accent); border-color: rgba(99,102,241,0.35); box-shadow: 0 10px 30px -18px var(--accent-glow); }
+    .btn-danger { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.20); color:#ffd0d0; }
+    #reader { width: 100%; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.10); }
+    #scan-wrap { position: relative; }
+    .scan-overlay {
+      position: absolute;
+      inset: 12px;
+      border-radius: 18px;
+      pointer-events: none;
+      border: 2px solid rgba(99,102,241,0.35);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 0 30px rgba(99,102,241,0.18);
+      opacity: 0;
+      transition: opacity .15s ease;
+    }
+    .scan-overlay.on { opacity: 1; }
+    .scan-line {
+      position: absolute;
+      left: 18px; right: 18px;
+      height: 2px;
+      background: linear-gradient(to right, transparent, rgba(99,102,241,0.8), transparent);
+      top: 22px;
+      opacity: 0;
+    }
+    .scan-overlay.on .scan-line {
+      opacity: 1;
+      animation: scan 1.25s linear infinite;
+    }
+    @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(240px); } }
+    .status { margin-top: 10px; color: var(--text-dim); font-weight: 800; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; display:flex; flex-direction: column; gap: 0.75rem; z-index: 4000; }
+    .toast { background:#1e1e26; border:1px solid var(--border); padding: 0.9rem 1.1rem; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 560px; }
+
+    /* modal */
+    #modal { position: fixed; inset: 0; display:none; align-items:center; justify-content:center; padding: 1.2rem; z-index: 5000; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); }
+    #modal .card { width: min(520px, 100%); background: var(--surface); border:1px solid var(--border); border-radius: 1.25rem; padding: 1rem; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
+    #modal .card .title { margin-bottom: 0.35rem; }
+    #modal .actions { display:flex; gap: 10px; justify-content:flex-end; margin-top: 10px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Offline Cashier</h1>
+        <div class="sub"><strong>Store mode</strong> • manual sale + QR scan → instant stock sync</div>
+      </div>
+      <div class="row" style="justify-content:flex-end;">
+        <div class="pill" id="auth-pill">Admin: Logged out</div>
+        <a class="btn" href="/admin">HQ Admin</a>
+        <a class="btn" href="/">Customer</a>
+      </div>
+    </header>
+
+    <div class="panel" id="login-panel">
+      <div class="title">Login</div>
+      <div class="sub">Password demo (6969). Stores a simple flag locally.</div>
+      <div class="row">
+        <div class="field">
+          <label>Password</label>
+          <input id="pw" type="password" placeholder="Enter password" />
+        </div>
+        <button class="btn btn-primary" onclick="login()">Login</button>
+      </div>
+    </div>
+
+    <div id="dash" class="grid" style="display:none;">
+      <div class="panel">
+        <div class="title">Manual Sale</div>
+        <div class="sub">Direct purchase → updates both <span class="mono">total_stock</span> and <span class="mono">store_stock</span>.</div>
+        <div class="row">
+          <div class="field">
+            <label>Product ID</label>
+            <input id="m-product" placeholder="e.g. PROD-2000" />
+          </div>
+          <div class="field">
+            <label>Store ID</label>
+            <input id="m-store" placeholder="e.g. STORE-100" />
+          </div>
+          <div class="field small">
+            <label>Qty</label>
+            <input id="m-qty" type="number" min="1" step="1" value="1" />
+          </div>
+          <button class="btn btn-primary" onclick="manualSale()">Confirm</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="title">QR Scan Sale</div>
+        <div class="sub">Scan product QR containing <span class="mono">product_id</span>, then confirm.</div>
+        <div class="row" style="margin-bottom: 10px;">
+          <div class="field">
+            <label>Store ID</label>
+            <input id="q-store" placeholder="e.g. STORE-100" />
+          </div>
+          <div class="field small">
+            <label>Qty</label>
+            <input id="q-qty" type="number" min="1" step="1" value="1" />
+          </div>
+          <button class="btn" onclick="startScanner()">Start Scanner</button>
+          <button class="btn btn-danger" onclick="stopScanner()">Stop Scanner</button>
+        </div>
+        <div id="scan-wrap">
+          <div id="reader"></div>
+          <div id="scan-overlay" class="scan-overlay">
+            <div class="scan-line"></div>
+          </div>
+        </div>
+        <div class="status" id="scan-status">Scanner: stopped</div>
+        <div class="row" style="margin-top: 10px;">
+          <div class="field">
+            <label>Scanned Product ID</label>
+            <input id="q-product" class="mono" placeholder="(scan QR)" />
+          </div>
+          <button class="btn btn-primary" onclick="confirmScanPurchase()">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal">
+    <div class="card">
+      <div class="title">Confirm scanned purchase</div>
+      <div class="sub">Detected product: <span class="mono" id="m-pid">(none)</span></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>Store ID</label>
+          <input id="m-store2" placeholder="e.g. STORE-100" />
+        </div>
+        <div class="field small">
+          <label>Qty</label>
+          <input id="m-qty2" type="number" min="1" step="1" value="1" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="cancelModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmModal()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Html5Qrcode loaded locally for reliability (no CDN dependency). -->
+  <script src="/static/js/html5-qrcode.min.js"></script>
+  <script>
+    const state = { isAdmin: localStorage.getItem('isAdmin') === 'true' };
+    let qrScanner = null; // Html5Qrcode instance
+    let scanRunning = false;
+    let lastScanText = '';
+    let lastScanAt = 0;
+    let pendingScanText = '';
+    let lastCameraDevices = [];
+
+    function toast(msg, type='info') {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<div style="font-weight:900;margin-bottom:4px">${type.toUpperCase()}</div><div>${msg}</div>`;
+      document.getElementById('toast').appendChild(t);
+      setTimeout(()=> t.remove(), 4200);
+    }
+
+    function setAuthUI() {
+      document.getElementById('auth-pill').textContent = state.isAdmin ? 'Admin: Logged in' : 'Admin: Logged out';
+      document.getElementById('login-panel').style.display = state.isAdmin ? 'none' : 'block';
+      document.getElementById('dash').style.display = state.isAdmin ? 'grid' : 'none';
+    }
+
+    async function login() {
+      const password = document.getElementById('pw').value || '';
+      const r = await fetch('/admin_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (!r.ok) { toast('Invalid password', 'error'); return; }
+      localStorage.setItem('isAdmin', 'true');
+      state.isAdmin = true;
+      toast('Logged in', 'success');
+      setAuthUI();
+    }
+
+    async function apiPost(path, body) {
+      const r = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-is-admin': 'true' },
+        body: JSON.stringify(body)
+      });
+      const txt = await r.text();
+      let json = null;
+      try { json = JSON.parse(txt); } catch {}
+      if (!r.ok) throw new Error(json?.detail || txt || `HTTP ${r.status}`);
+      return json ?? {};
+    }
+
+    async function manualSale() {
+      try {
+        const product_id = (document.getElementById('m-product').value || '').trim();
+        const store_id = (document.getElementById('m-store').value || '').trim();
+        const quantity = parseInt(document.getElementById('m-qty').value || '0', 10);
+        const res = await apiPost('/scan_purchase', { product_id, store_id, quantity });
+        toast(`Sale ok. total_stock=${res.total_stock_after}, store_stock=${res.store_stock_after}`, 'success');
+      } catch (e) {
+        toast(e.message || String(e), 'error');
+      }
+    }
+
+    async function confirmScanPurchase() {
+      try {
+        const product_id = (document.getElementById('q-product').value || '').trim();
+        const store_id = (document.getElementById('q-store').value || '').trim();
+        const quantity = parseInt(document.getElementById('q-qty').value || '0', 10);
+        const res = await apiPost('/scan_purchase', { product_id, store_id, quantity });
+        toast(`Scan purchase ok. total_stock=${res.total_stock_after}, store_stock=${res.store_stock_after}`, 'success');
+      } catch (e) {
+        toast(e.message || String(e), 'error');
+      } finally {
+        // resume scanning after manual confirm
+        if (scanRunning) restartScan().catch(()=>{});
+      }
+    }
+
+    function setScanUI(running) {
+      document.getElementById('scan-status').textContent = running ? 'Scanner: scanning…' : 'Scanner: stopped';
+      document.getElementById('scan-overlay').classList.toggle('on', !!running);
+    }
+
+    function secureContextOk() {
+      // Camera requires secure context: https:// or http://localhost
+      const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      return window.isSecureContext || isLocalhost;
+    }
+
+    async function startScanner() {
+      if (!state.isAdmin) { toast('Please login first', 'error'); return; }
+      if (scanRunning) return;
+      if (!secureContextOk()) {
+        toast('Camera requires HTTPS or localhost. Open this app via http://127.0.0.1:8000/offline', 'error');
+        return;
+      }
+      scanRunning = true;
+      setScanUI(true);
+
+      try {
+        console.log('Scanner starting…');
+
+        const devices = await Html5Qrcode.getCameras();
+        lastCameraDevices = devices || [];
+        console.log('Devices:', lastCameraDevices);
+
+        if (!devices || !devices.length) {
+          scanRunning = false;
+          setScanUI(false);
+          alert('No camera found');
+          return;
+        }
+
+        // Prefer rear camera when available; else use first device.
+        const preferred = devices.find(d => /back|rear|environment/i.test(d.label || '')) || devices[0];
+        const cameraId = preferred.id;
+
+        // Prevent multiple instances: stop+clear existing before new start.
+        if (qrScanner) {
+          try { await qrScanner.stop(); } catch {}
+          try { qrScanner.clear(); } catch {}
+          qrScanner = null;
+        }
+
+        qrScanner = new Html5Qrcode("reader");
+
+        await qrScanner.start(
+          cameraId,
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            console.log("Scanned:", decodedText);
+            onScan(decodedText);
+          },
+          (error) => {}
+        );
+
+        console.log('Scanner started');
+      } catch (err) {
+        scanRunning = false;
+        setScanUI(false);
+        const msg = String(err || '');
+        if (/permission|notallowed|denied/i.test(msg)) {
+          console.error('Camera permission error:', err);
+          toast('Please allow camera access in your browser site settings, then retry.', 'error');
+        } else {
+          console.error('Camera error:', err);
+          toast(`Camera error: ${msg}`, 'error');
+        }
+      }
+    }
+
+    async function restartScan() {
+      // If scanner was stopped due to modal, start again.
+      if (!scanRunning) return;
+      try {
+        if (qrScanner) {
+          await qrScanner.stop().catch(() => {});
+        }
+        await startScanner();
+      } catch {}
+    }
+
+    async function stopScanner() {
+      scanRunning = false;
+      setScanUI(false);
+      if (!qrScanner) return;
+      try {
+        await qrScanner.stop();
+        await qrScanner.clear();
+        qrScanner = null;
+        toast('Scanner stopped', 'info');
+      } catch (e) {
+        qrScanner = null;
+      }
+    }
+
+    function onScan(decodedText) {
+      const v = (decodedText || '').trim();
+      if (!v) return;
+      const now = Date.now();
+      // Throttle duplicates / rapid re-scans
+      if (v === lastScanText && (now - lastScanAt) < 2000) return;
+      if ((now - lastScanAt) < 800) return;
+      lastScanText = v;
+      lastScanAt = now;
+      document.getElementById('q-product').value = v;
+      openModal(v);
+    }
+
+    function openModal(productId) {
+      pendingScanText = productId;
+      document.getElementById('m-pid').textContent = productId;
+      // default to current QR store/qty inputs
+      document.getElementById('m-store2').value = (document.getElementById('q-store').value || '').trim();
+      document.getElementById('m-qty2').value = (document.getElementById('q-qty').value || '1');
+      document.getElementById('modal').style.display = 'flex';
+      // Pause scanning while confirming (prevents multiple scans)
+      if (qrScanner) qrScanner.stop().catch(() => {});
+    }
+
+    function cancelModal() {
+      document.getElementById('modal').style.display = 'none';
+      pendingScanText = '';
+      if (scanRunning) startScanner().catch(()=>{});
+    }
+
+    async function confirmModal() {
+      try {
+        const product_id = (pendingScanText || '').trim();
+        const store_id = (document.getElementById('m-store2').value || '').trim();
+        const quantity = parseInt(document.getElementById('m-qty2').value || '0', 10);
+        if (!product_id) { toast('Invalid QR (empty)', 'error'); return; }
+        if (!store_id) { toast('Store ID required', 'error'); return; }
+        if (!quantity || quantity <= 0) { toast('Quantity must be > 0', 'error'); return; }
+
+        const res = await apiPost('/scan_purchase', { product_id, store_id, quantity });
+        toast(`✅ Purchase updated • total=${res.total_stock_after} • store=${res.store_stock_after}`, 'success');
+      } catch (e) {
+        toast(e.message || String(e), 'error');
+      } finally {
+        document.getElementById('modal').style.display = 'none';
+        pendingScanText = '';
+        if (scanRunning) startScanner().catch(()=>{});
+      }
+    }
+
+    setAuthUI();
+  </script>
+</body>
+</html>
+
