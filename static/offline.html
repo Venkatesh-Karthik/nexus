@@ -392,7 +392,27 @@
       if ((now - lastScanAt) < 800) return;
       lastScanText = v;
       lastScanAt = now;
-      document.getElementById('q-product').value = v;
+
+      // Auto-fill the product ID input field
+      const input = document.getElementById('q-product');
+      input.value = v;
+
+      // Visual feedback: briefly highlight the input green
+      input.style.transition = 'border-color 0.2s, box-shadow 0.2s';
+      input.style.borderColor = 'rgba(16, 185, 129, 0.8)';
+      input.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
+      setTimeout(() => {
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+      }, 1500);
+
+      // Update status text
+      document.getElementById('scan-status').textContent = `✅ Product detected: ${v}`;
+
+      // Auto-focus quantity field for fast entry
+      document.getElementById('q-qty')?.focus();
+
+      // Open the confirm modal
       openModal(v);
     }
 
