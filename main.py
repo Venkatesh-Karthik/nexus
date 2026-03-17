@@ -18,14 +18,19 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from pathlib import Path
+import json
+import time
 from pydantic import BaseModel
 import trust_score as ts_logic
 import demand_prediction
+import startup
 
 
 DB_FILE = "inventory.db"
 RESERVATION_TTL_MINUTES = 10
+CENTRAL_STORE_ID = "CENTRAL"
 
 def verify_admin(is_admin: bool):
     if not is_admin:
@@ -114,7 +119,36 @@ def init_db():
             store_id   TEXT,
             quantity   INTEGER
         );
+
+        -- Operational mismatch history for trust/visibility.
+        CREATE TABLE IF NOT EXISTS inventory_mismatches (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts             TEXT    NOT NULL DEFAULT (datetime('now')),
+            product_id     TEXT    NOT NULL,
+            total_stock    INTEGER NOT NULL,
+            sum_store_stock INTEGER NOT NULL,
+            delta          INTEGER NOT NULL
+        );
+
+        -- App-level product catalog (realistic retail naming), decoupled from dataset Products table.
+        CREATE TABLE IF NOT EXISTS product_catalog (
+            product_id   TEXT PRIMARY KEY,
+            product_name TEXT NOT NULL,
+            category     TEXT NOT NULL,
+            brand        TEXT NOT NULL
+        );
     """)
+
+    # Ensure a "Central Warehouse" store exists for balancing total vs store-level stock.
+    # Stores is a dataset table; we insert a row if possible, but do not require it.
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO Stores (store_id, city) VALUES (?, ?)",
+            (CENTRAL_STORE_ID, "Central Warehouse"),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     # Seed store_stock once from dataset snapshot if empty.
     try:
@@ -135,8 +169,319 @@ def init_db():
     except Exception:
         # If dataset tables don't exist yet, skip seeding (app will still run).
         conn.rollback()
+
+    # After seeding (or if store_stock already exists), enforce the invariant:
+    #   inventory.total_stock == SUM(store_stock.stock) for each product,
+    # by assigning any difference into CENTRAL store_stock (never negative).
+    try:
+        _seed_product_catalog(conn)
+        _sync_all_products_to_central(conn)
+        conn.commit()
+    except Exception:
+        conn.rollback()
     finally:
         conn.close()
+
+
+def _seed_product_catalog(conn: sqlite3.Connection) -> None:
+    """
+    Populate product_catalog for all inventory products if missing.
+    Uses a deterministic cycle of realistic products across 15 retail categories.
+    """
+    # If table is empty, seed for all product_ids in inventory.
+    cnt = conn.execute("SELECT COUNT(1) AS n FROM product_catalog").fetchone()
+    if cnt and int(cnt["n"]) > 0:
+        return
+
+    categories = [
+        ("Watches", [
+            ("Rolex", "Submariner"), ("Omega", "Seamaster"), ("Tissot", "PRX"), ("Casio", "G-Shock"),
+            ("Seiko", "Prospex Diver"), ("Fossil", "Gen 6 Hybrid"), ("Citizen", "Eco-Drive"),
+            ("Tag Heuer", "Carrera"), ("Garmin", "Fenix"), ("Apple", "Watch Series"),
+        ]),
+        ("Shoes", [
+            ("Nike", "Air Max 90"), ("Adidas", "Ultraboost"), ("Puma", "RS-X"), ("Reebok", "Classic Leather"),
+            ("New Balance", "574"), ("ASICS", "Gel-Kayano"), ("Vans", "Old Skool"),
+            ("Converse", "Chuck 70"), ("Jordan", "Retro High"), ("Skechers", "Go Walk"),
+        ]),
+        ("Apparel", [
+            ("Levi's", "501 Original Jeans"), ("Uniqlo", "Supima Cotton Tee"), ("Zara", "Slim Fit Shirt"),
+            ("H&M", "Everyday Hoodie"), ("Nike", "Dri-FIT Tee"), ("Adidas", "Essentials Track Pants"),
+            ("Ralph Lauren", "Polo Shirt"), ("Calvin Klein", "Logo Sweatshirt"),
+            ("Tommy Hilfiger", "Classic Jacket"), ("The North Face", "Puffer Jacket"),
+        ]),
+        ("Accessories", [
+            ("Bellroy", "Slim Wallet"), ("Herschel", "Chapter Toiletry Kit"), ("Nike", "Everyday Cap"),
+            ("Adidas", "Performance Socks"), ("Fjällräven", "Kånken Keyring"), ("Ray-Ban", "Leather Case"),
+            ("Samsonite", "Luggage Tag"), ("Anker", "USB-C Cable"), ("Apple", "MagSafe Wallet"),
+            ("Victorinox", "Swiss Card"),
+        ]),
+        ("Electronics", [
+            ("Apple", "AirPods Pro"), ("Sony", "WH-1000XM Headphones"), ("Samsung", "Galaxy Watch"),
+            ("Bose", "QuietComfort Earbuds"), ("Nintendo", "Switch Console"), ("Kindle", "Paperwhite"),
+            ("GoPro", "HERO Action Cam"), ("JBL", "Flip Speaker"), ("Logitech", "MX Master Mouse"),
+            ("Dell", "UltraSharp Monitor"),
+        ]),
+        ("Bags", [
+            ("Samsonite", "Carry-On Spinner"), ("Tumi", "Alpha Brief Pack"), ("Herschel", "Little America Backpack"),
+            ("Nike", "Brasilia Duffel"), ("Adidas", "Classic Backpack"), ("Fjällräven", "Kånken Backpack"),
+            ("Eastpak", "Padded Pak'r"), ("Michael Kors", "Jet Set Tote"),
+            ("Coach", "Signature Crossbody"), ("Bellroy", "Transit Workpack"),
+        ]),
+        ("Sunglasses", [
+            ("Ray-Ban", "Wayfarer"), ("Oakley", "Holbrook"), ("Persol", "PO0649"), ("Maui Jim", "Peahi"),
+            ("Prada", "Linea Rossa"), ("Gucci", "Square Frame"), ("Tom Ford", "FT0237"),
+            ("Polaroid", "Classic Shades"), ("Carrera", "Aviator"), ("Vogue", "Everyday Sunglasses"),
+        ]),
+        ("Perfumes", [
+            ("Dior", "Sauvage"), ("Chanel", "Bleu de Chanel"), ("Giorgio Armani", "Acqua di Giò"),
+            ("Versace", "Eros"), ("YSL", "La Nuit de L'Homme"), ("Paco Rabanne", "1 Million"),
+            ("Tom Ford", "Oud Wood"), ("Jo Malone", "Wood Sage & Sea Salt"),
+            ("Calvin Klein", "CK One"), ("Burberry", "Hero"),
+        ]),
+        ("Jewelry", [
+            ("Tiffany & Co.", "Sterling Pendant"), ("Swarovski", "Crystal Studs"), ("Pandora", "Charm Bracelet"),
+            ("Cartier", "Love Ring"), ("Bvlgari", "Serpenti Bracelet"), ("Mejuri", "Gold Hoops"),
+            ("David Yurman", "Cable Bracelet"), ("Thomas Sabo", "Silver Chain"),
+            ("Tous", "Signature Pendant"), ("Mikimoto", "Pearl Earrings"),
+        ]),
+        ("Sportswear", [
+            ("Nike", "Tech Fleece Joggers"), ("Adidas", "Training Shorts"), ("Under Armour", "HeatGear Top"),
+            ("Puma", "Running Tee"), ("Reebok", "Workout Tank"), ("Lululemon", "Pace Breaker Shorts"),
+            ("Gymshark", "Training Leggings"), ("ASICS", "Running Jacket"),
+            ("New Balance", "Sport Hoodie"), ("The North Face", "Active Windbreaker"),
+        ]),
+        ("Formal Footwear", [
+            ("Clarks", "Oxford Leather"), ("Allen Edmonds", "Park Avenue"), ("Cole Haan", "GrandPro"),
+            ("Johnston & Murphy", "Tyndall Cap Toe"), ("Ecco", "Helsinki"), ("Loake", "1880 Oxford"),
+            ("Bata", "Classic Derby"), ("Hush Puppies", "Dress Shoe"),
+            ("Tod's", "Leather Loafer"), ("Salvatore Ferragamo", "Gancini Loafer"),
+        ]),
+        ("Smart Devices", [
+            ("Apple", "AirTag 4-Pack"), ("Google", "Nest Hub"), ("Amazon", "Echo Dot"),
+            ("Fitbit", "Charge Tracker"), ("Samsung", "SmartTag2"), ("Xiaomi", "Mi Smart Band"),
+            ("Ring", "Video Doorbell"), ("TP-Link", "Smart Plug"),
+            ("Philips Hue", "Starter Kit"), ("Anker", "MagGo Charger"),
+        ]),
+        ("Luxury Items", [
+            ("Louis Vuitton", "Monogram Wallet"), ("Gucci", "Leather Belt"), ("Prada", "Saffiano Cardholder"),
+            ("Burberry", "Check Scarf"), ("Hermès", "Silk Tie"), ("Cartier", "Signature Pen"),
+            ("Montblanc", "Meisterstück Pen"), ("Bottega Veneta", "Intrecciato Wallet"),
+            ("Saint Laurent", "SLP Card Case"), ("Balenciaga", "Logo Cap"),
+        ]),
+        ("Travel Gear", [
+            ("Samsonite", "Travel Pillow"), ("Cabeau", "Neck Pillow"), ("Away", "Carry-On"),
+            ("Osprey", "Farpoint Backpack"), ("Nomad", "Travel Adapter"), ("Anker", "Power Bank"),
+            ("GoPro", "Travel Kit"), ("Peak Design", "Packing Cubes"),
+            ("Hydro Flask", "Travel Bottle"), ("Eagle Creek", "Compression Sacs"),
+        ]),
+        ("Fitness Equipment", [
+            ("Bowflex", "Adjustable Dumbbells"), ("Nike", "Training Mat"), ("Adidas", "Resistance Bands"),
+            ("Fitbit", "Smart Scale"), ("TheraBand", "Loop Bands"), ("TriggerPoint", "Foam Roller"),
+            ("Hyperice", "Massage Gun"), ("Garmin", "HRM-Pro Strap"),
+            ("Kettlebell Kings", "Kettlebell"), ("Under Armour", "Jump Rope"),
+        ]),
+    ]
+
+    # Flatten to a deterministic list of 150 SKUs.
+    sku = []
+    for cat, items in categories:
+        for brand, name in items:
+            sku.append((cat, brand, f"{brand} {name}"))
+
+    inv_ids = [r["product_id"] for r in conn.execute("SELECT product_id FROM inventory ORDER BY product_id").fetchall()]
+    for i, pid in enumerate(inv_ids):
+        cat, brand, pname = sku[i % len(sku)]
+        conn.execute(
+            "INSERT OR REPLACE INTO product_catalog (product_id, product_name, category, brand) VALUES (?, ?, ?, ?)",
+            (pid, pname, cat, brand),
+        )
+
+
+def _sum_store_stock(conn: sqlite3.Connection, product_id: str) -> int:
+    row = conn.execute(
+        "SELECT COALESCE(SUM(MAX(0, stock)), 0) AS s FROM store_stock WHERE product_id = ?",
+        (product_id,),
+    ).fetchone()
+    return int(row["s"] if row and row["s"] is not None else 0)
+
+
+def _ensure_store_stock_row(conn: sqlite3.Connection, store_id: str, product_id: str) -> None:
+    conn.execute(
+        "INSERT OR IGNORE INTO store_stock (store_id, product_id, stock) VALUES (?, ?, 0)",
+        (store_id, product_id),
+    )
+
+
+def _sync_product_to_central(conn: sqlite3.Connection, product_id: str) -> None:
+    inv = conn.execute(
+        "SELECT total_stock FROM inventory WHERE product_id = ?",
+        (product_id,),
+    ).fetchone()
+    if not inv:
+        return
+
+    total_stock = int(inv["total_stock"])
+    sum_store = _sum_store_stock(conn, product_id)
+    delta = total_stock - sum_store
+
+    # Record mismatch any time we see divergence (helps trust score).
+    if delta != 0:
+        try:
+            conn.execute(
+                """
+                INSERT INTO inventory_mismatches (product_id, total_stock, sum_store_stock, delta)
+                VALUES (?, ?, ?, ?)
+                """,
+                (product_id, total_stock, sum_store, delta),
+            )
+        except Exception:
+            pass
+
+    # If store sum is higher than total_stock, bring total_stock up (physical stock exists in stores).
+    # This avoids a negative CENTRAL bucket and prevents "phantom underflow" on store sales.
+    if delta < 0:
+        conn.execute(
+            "UPDATE inventory SET total_stock = ? WHERE product_id = ?",
+            (sum_store, product_id),
+        )
+        total_stock = sum_store
+        delta = 0
+
+    _ensure_store_stock_row(conn, CENTRAL_STORE_ID, product_id)
+    central = conn.execute(
+        "SELECT stock FROM store_stock WHERE store_id = ? AND product_id = ?",
+        (CENTRAL_STORE_ID, product_id),
+    ).fetchone()
+    central_before = int(central["stock"]) if central else 0
+    central_after = max(0, central_before + delta)
+    conn.execute(
+        "UPDATE store_stock SET stock = ? WHERE store_id = ? AND product_id = ?",
+        (central_after, CENTRAL_STORE_ID, product_id),
+    )
+
+
+def _sync_all_products_to_central(conn: sqlite3.Connection) -> None:
+    pids = conn.execute("SELECT product_id FROM inventory").fetchall()
+    for r in pids:
+        _sync_product_to_central(conn, r["product_id"])
+
+
+def _apply_stock_delta(
+    conn: sqlite3.Connection,
+    product_id: str,
+    total_delta: int,
+    store_id: str = CENTRAL_STORE_ID,
+    store_delta: Optional[int] = None,
+    *,
+    forbid_below_reserved: bool = True,
+) -> dict:
+    """
+    Single atomic stock mutation primitive.
+
+    Guarantees:
+    - Updates inventory.total_stock by total_delta
+    - Updates store_stock.stock for store_id by store_delta (defaults to total_delta)
+    - Prevents negative totals and negative store stock
+    - Prevents total_stock dropping below inventory.reserved_stock (unless forbid_below_reserved=False)
+    """
+    if store_delta is None:
+        store_delta = total_delta
+
+    inv = conn.execute(
+        "SELECT total_stock, reserved_stock FROM inventory WHERE product_id = ?",
+        (product_id,),
+    ).fetchone()
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Product {product_id} not found.")
+
+    total_before = int(inv["total_stock"])
+    reserved = int(inv["reserved_stock"])
+    total_after = total_before + int(total_delta)
+    if total_after < 0:
+        raise HTTPException(status_code=409, detail="Cannot set total_stock below 0.")
+    if forbid_below_reserved and total_after < reserved:
+        raise HTTPException(status_code=409, detail=f"Cannot reduce below reserved_stock ({reserved}).")
+
+    _ensure_store_stock_row(conn, store_id, product_id)
+    ss = conn.execute(
+        "SELECT stock FROM store_stock WHERE store_id=? AND product_id=?",
+        (store_id, product_id),
+    ).fetchone()
+    store_before = int(ss["stock"]) if ss else 0
+    store_after = store_before + int(store_delta)
+    if store_after < 0:
+        raise HTTPException(status_code=409, detail="Not enough store stock for this operation.")
+
+    conn.execute(
+        "UPDATE inventory SET total_stock = ? WHERE product_id = ?",
+        (total_after, product_id),
+    )
+    conn.execute(
+        "UPDATE store_stock SET stock = ? WHERE store_id=? AND product_id=?",
+        (store_after, store_id, product_id),
+    )
+
+    # Keep invariant healthy for this product (assign drift into CENTRAL).
+    _sync_product_to_central(conn, product_id)
+
+    return {
+        "product_id": product_id,
+        "total_stock_before": total_before,
+        "total_stock_after": total_after,
+        "reserved_stock": reserved,
+        "store_id": store_id,
+        "store_stock_before": store_before,
+        "store_stock_after": store_after,
+        "available_stock_after": total_after - reserved,
+    }
+
+
+def _sse_format(data: dict, event: str = "message", event_id: Optional[int] = None) -> str:
+    lines = []
+    if event_id is not None:
+        lines.append(f"id: {event_id}")
+    if event:
+        lines.append(f"event: {event}")
+    payload = json.dumps(data, ensure_ascii=False)
+    for line in payload.splitlines():
+        lines.append(f"data: {line}")
+    return "\n".join(lines) + "\n\n"
+
+
+def _event_stream(last_id: int = 0, admin_only: bool = False):
+    """
+    Server-Sent Events stream of activity_log changes.
+    Clients can pass ?last_id=123 to resume.
+    """
+    last = max(0, int(last_id or 0))
+    while True:
+        try:
+            conn = get_conn()
+            rows = conn.execute(
+                """
+                SELECT id, ts, event_type, message, product_id, store_id, quantity
+                FROM activity_log
+                WHERE id > ?
+                ORDER BY id ASC
+                LIMIT 50
+                """,
+                (last,),
+            ).fetchall()
+            conn.close()
+
+            if rows:
+                for r in rows:
+                    last = int(r["id"])
+                    yield _sse_format(dict(r), event="activity", event_id=last)
+            else:
+                # Keep connection alive (also helps proxies)
+                yield "event: ping\ndata: {}\n\n"
+        except Exception:
+            # If DB temporarily unavailable, don't crash the stream.
+            yield "event: ping\ndata: {}\n\n"
+
+        time.sleep(1.0)
 
 
 def log_activity(
@@ -237,12 +582,15 @@ async def expiry_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Step 1: Seed database from Excel dataset if empty (fixes ephemeral FS on Render).
+    startup.ensure_database_ready()
+    # Step 2: Create operational tables and sync stock.
     init_db()
-    # Start the expiry loop as a non-blocking background task
+    # Step 3: Start the background expiry loop.
     task = asyncio.create_task(expiry_loop())
     print(f"[lifespan] Expiry loop started — checking every {EXPIRY_CHECK_INTERVAL_SECONDS}s.")
     yield
-    # Graceful shutdown: cancel the loop when the server stops
+    # Graceful shutdown: cancel the loop when the server stops.
     task.cancel()
     try:
         await task
@@ -266,6 +614,7 @@ app.add_middleware(
 
 # Serve static frontend files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/images", StaticFiles(directory="static/images"), name="images")
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +742,28 @@ def admin_page():
     return FileResponse(base / "static" / "admin_app.html", headers={"Cache-Control": "no-store"})
 
 
+@app.get("/offline")
+def offline_page():
+    base = Path(__file__).resolve().parent
+    return FileResponse(base / "static" / "offline.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/events")
+def events(last_id: int = 0):
+    """
+    Public event stream used by customer UI for instant refresh.
+    """
+    return StreamingResponse(_event_stream(last_id=last_id, admin_only=False), media_type="text/event-stream")
+
+
+@app.get("/admin/events")
+def admin_events(last_id: int = 0, _: None = Depends(require_admin)):
+    """
+    Admin event stream (same payload; separate path for auth + future filtering).
+    """
+    return StreamingResponse(_event_stream(last_id=last_id, admin_only=True), media_type="text/event-stream")
+
+
 @app.get("/__debug_mainfile")
 def __debug_mainfile():
     return {"main_file": str(Path(__file__).resolve())}
@@ -408,9 +779,9 @@ def get_inventory():
     rows = conn.execute("""
         SELECT
             i.product_id,
-            -- Dataset schema: Products does not include product_name; expose a stable name anyway.
-            COALESCE(p.category, i.product_id)                 AS product_name,
-            p.category                                         AS category,
+            COALESCE(pc.product_name, p.category, i.product_id) AS product_name,
+            COALESCE(pc.category, p.category)                  AS category,
+            pc.brand                                           AS brand,
             p.price_usd                                        AS price,
             p.collection_season                                AS collection_season,
             i.total_stock,
@@ -423,6 +794,7 @@ def get_inventory():
             END AS stock_status
         FROM inventory AS i
         LEFT JOIN Products AS p ON i.product_id = p.product_id
+        LEFT JOIN product_catalog AS pc ON i.product_id = pc.product_id
         LEFT JOIN (
             SELECT product_id, SUM(quantity) AS reserved_stock
             FROM reservations
@@ -431,8 +803,23 @@ def get_inventory():
         ) AS r ON i.product_id = r.product_id
         ORDER BY i.product_id
     """).fetchall()
+    # Demand prediction + trust score are computed in Python to avoid schema coupling.
+    demand = demand_prediction.get_predicted_demand(DB_FILE)
+    out = []
+    for r in rows:
+        d = dict(r)
+        pid = d.get("product_id")
+        d["demand_per_day"] = float(demand.get(pid, 0.0) or 0.0)
+        try:
+            t = ts_logic.compute_trust_score(pid, DB_FILE)
+            d["trust_score"] = t.get("trust_score")
+            d["trust_label"] = t.get("label")
+        except Exception:
+            d["trust_score"] = None
+            d["trust_label"] = "No Data"
+        out.append(d)
     conn.close()
-    return [dict(r) for r in rows]
+    return out
 
 
 @app.get("/api/inventory/{product_id}")
@@ -636,12 +1023,15 @@ def get_stock():
         rows = conn.execute("""
         SELECT
             i.product_id,
-            COALESCE(p.category, i.product_id)                  AS product_name,
+            COALESCE(pc.product_name, p.category, i.product_id) AS product_name,
+            COALESCE(pc.category, p.category)                  AS category,
+            pc.brand                                           AS brand,
             i.total_stock,
             COALESCE(r.reserved_stock, 0)                 AS reserved_stock,
             i.total_stock - COALESCE(r.reserved_stock, 0) AS available_stock
         FROM inventory AS i
         LEFT JOIN Products AS p ON i.product_id = p.product_id
+        LEFT JOIN product_catalog AS pc ON i.product_id = pc.product_id
         LEFT JOIN (
             SELECT product_id, SUM(quantity) AS reserved_stock
             FROM reservations
@@ -654,19 +1044,19 @@ def get_stock():
         conn.close()
     
     # Enrich with trust scores and demand predictions
-    predictions = demand_prediction.get_predicted_demand()
+    predictions = demand_prediction.get_predicted_demand(DB_FILE)
     results = []
     for row in rows:
         d = dict(row)
         pid = d["product_id"]
         
         # Trust Score
-        ts = ts_logic.compute_trust_score(pid)
+        ts = ts_logic.compute_trust_score(pid, DB_FILE)
         d["trust_score"] = ts["trust_score"]
         d["trust_label"] = ts["label"]
         
         # Demand Prediction
-        d["predicted_demand"] = predictions.get(pid, 0.0)
+        d["demand_per_day"] = predictions.get(pid, 0.0)
         
         results.append(d)
         
@@ -720,6 +1110,8 @@ def admin_login(req: AdminLoginRequest):
 
 class AddProductRequest(BaseModel):
     product_name: str
+    category: Optional[str] = None
+    brand: Optional[str] = None
 
 
 @app.post("/add_product")
@@ -727,6 +1119,9 @@ def add_product(req: AddProductRequest, _: None = Depends(require_admin)):
     name = (req.product_name or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="product_name is required.")
+
+    category = (req.category or "").strip() or "Apparel"
+    brand = (req.brand or "").strip() or (name.split(" ", 1)[0] if " " in name else "Generic")
 
     conn = get_conn()
     try:
@@ -747,9 +1142,16 @@ def add_product(req: AddProductRequest, _: None = Depends(require_admin)):
             """,
             (product_id,),
         )
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO product_catalog (product_id, product_name, category, brand)
+            VALUES (?, ?, ?, ?)
+            """,
+            (product_id, name, category, brand),
+        )
         log_activity(conn, "product", "Product added.", product_id=product_id)
         conn.execute("COMMIT")
-        return {"success": True, "product_id": product_id, "product_name": name}
+        return {"success": True, "product_id": product_id, "product_name": name, "category": category, "brand": brand}
 
     except sqlite3.IntegrityError as e:
         conn.execute("ROLLBACK")
@@ -914,49 +1316,17 @@ def update_stock(req: UpdateStockRequest, _: None = Depends(require_admin)):
     conn = get_conn()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        row = conn.execute(
-            "SELECT total_stock, reserved_stock FROM inventory WHERE product_id = ?",
-            (req.product_id,),
-        ).fetchone()
-        if not row:
-            conn.execute("ROLLBACK")
-            raise HTTPException(status_code=404, detail=f"Product {req.product_id} not found.")
-
-        total_before = row["total_stock"]
-        reserved = row["reserved_stock"]
-        total_after = total_before + req.quantity
-
-        if total_after < 0:
-            conn.execute("ROLLBACK")
-            raise HTTPException(status_code=409, detail="Cannot set total_stock below 0.")
-        if total_after < reserved:
-            conn.execute("ROLLBACK")
-            raise HTTPException(
-                status_code=409,
-                detail=f"Cannot reduce below reserved_stock ({reserved}).",
-            )
-
-        conn.execute(
-            "UPDATE inventory SET total_stock = ? WHERE product_id = ?",
-            (total_after, req.product_id),
-        )
+        updated = _apply_stock_delta(conn, req.product_id, req.quantity, CENTRAL_STORE_ID)
 
         log_activity(
             conn,
             "stock_update",
-            "Central inventory stock updated.",
+            "Central inventory stock updated (synced to store_stock).",
             product_id=req.product_id,
             quantity=req.quantity,
         )
         conn.execute("COMMIT")
-        return {
-            "success": True,
-            "product_id": req.product_id,
-            "total_stock_before": total_before,
-            "total_stock_after": total_after,
-            "reserved_stock": reserved,
-            "available_stock_after": total_after - reserved,
-        }
+        return {"success": True, **updated}
 
     except HTTPException:
         raise
@@ -1008,13 +1378,14 @@ def get_all_store_inventory():
         rows = conn.execute(
             """
             SELECT
-                COALESCE(p.category, ss.product_id)    AS product_name,
+                COALESCE(pc.product_name, p.category, ss.product_id) AS product_name,
                 COALESCE(s.city, ss.store_id)          AS store_name,
                 SUM(MAX(0, ss.stock))                  AS stock,
                 ss.product_id                          AS product_id
             FROM store_stock AS ss
             LEFT JOIN Stores AS s ON s.store_id = ss.store_id
             LEFT JOIN Products AS p ON p.product_id = ss.product_id
+            LEFT JOIN product_catalog AS pc ON pc.product_id = ss.product_id
             GROUP BY ss.product_id, product_name, store_name
             ORDER BY product_name ASC, store_name ASC
             """
@@ -1049,36 +1420,15 @@ def add_stock(req: StockAdjustRequest, _: None = Depends(require_admin)):
     conn = get_conn()
     try:
         conn.execute("BEGIN IMMEDIATE")
-
-        row = conn.execute(
-            "SELECT total_stock, reserved_stock FROM inventory WHERE product_id = ?",
-            (req.product_id,),
-        ).fetchone()
-
-        if not row:
-            conn.execute("ROLLBACK")
-            raise HTTPException(status_code=404, detail=f"Product {req.product_id} not found.")
-
-        conn.execute(
-            "UPDATE inventory SET total_stock = total_stock + ? WHERE product_id = ?",
-            (req.quantity, req.product_id),
-        )
-        conn.execute("COMMIT")
-
-        updated = {
-            "product_id": req.product_id,
-            "total_stock_before": row["total_stock"],
-            "total_stock_after": row["total_stock"] + req.quantity,
-            "reserved_stock": row["reserved_stock"],
-            "available_stock_after": (row["total_stock"] + req.quantity) - row["reserved_stock"],
-        }
+        updated = _apply_stock_delta(conn, req.product_id, +req.quantity, CENTRAL_STORE_ID)
         log_activity(
             conn,
             "stock_update",
-            "Central inventory stock increased.",
+            "Central inventory stock increased (synced to store_stock).",
             product_id=req.product_id,
             quantity=req.quantity,
         )
+        conn.execute("COMMIT")
         return {"success": True, **updated, "message": "Stock added successfully."}
 
     except HTTPException:
@@ -1107,57 +1457,15 @@ def reduce_stock(req: StockAdjustRequest, _: None = Depends(require_admin)):
     conn = get_conn()
     try:
         conn.execute("BEGIN IMMEDIATE")
-
-        row = conn.execute(
-            "SELECT total_stock, reserved_stock FROM inventory WHERE product_id = ?",
-            (req.product_id,),
-        ).fetchone()
-
-        if not row:
-            conn.execute("ROLLBACK")
-            raise HTTPException(status_code=404, detail=f"Product {req.product_id} not found.")
-
-        total_before = row["total_stock"]
-        reserved = row["reserved_stock"]
-
-        if total_before < req.quantity:
-            conn.execute("ROLLBACK")
-            raise HTTPException(
-                status_code=409,
-                detail=f"Cannot reduce by {req.quantity}. Total stock is only {total_before}.",
-            )
-
-        total_after = total_before - req.quantity
-        if total_after < reserved:
-            conn.execute("ROLLBACK")
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Cannot reduce stock below reserved units. "
-                    f"reserved_stock={reserved}, requested_total_after={total_after}."
-                ),
-            )
-
-        conn.execute(
-            "UPDATE inventory SET total_stock = total_stock - ? WHERE product_id = ?",
-            (req.quantity, req.product_id),
-        )
-        conn.execute("COMMIT")
-
-        updated = {
-            "product_id": req.product_id,
-            "total_stock_before": total_before,
-            "total_stock_after": total_after,
-            "reserved_stock": reserved,
-            "available_stock_after": total_after - reserved,
-        }
+        updated = _apply_stock_delta(conn, req.product_id, -req.quantity, CENTRAL_STORE_ID)
         log_activity(
             conn,
             "stock_update",
-            "Central inventory stock reduced.",
+            "Central inventory stock reduced (synced to store_stock).",
             product_id=req.product_id,
             quantity=-req.quantity,
         )
+        conn.execute("COMMIT")
         return {"success": True, **updated, "message": "Stock reduced successfully."}
 
     except HTTPException:
@@ -1240,6 +1548,206 @@ def admin_activity(limit: int = 50, _: None = Depends(require_admin)):
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/admin/analytics")
+def admin_analytics(days: int = 14, _: None = Depends(require_admin)):
+    """
+    Business analytics + KPI metrics for HQ dashboard.
+    Uses available DB data; simulates cost/profit margin when not present.
+    """
+    days = max(7, min(int(days or 14), 90))
+    conn = get_conn()
+    try:
+        # KPI: total products
+        total_products = conn.execute("SELECT COUNT(1) AS n FROM inventory").fetchone()["n"]
+
+        # KPI: low stock items (available between 1..9)
+        low_stock = conn.execute(
+            """
+            SELECT COUNT(1) AS n
+            FROM (
+              SELECT
+                i.product_id,
+                i.total_stock - COALESCE(r.reserved_stock,0) AS available
+              FROM inventory i
+              LEFT JOIN (
+                SELECT product_id, SUM(quantity) AS reserved_stock
+                FROM reservations
+                WHERE status='active' AND expires_at > datetime('now')
+                GROUP BY product_id
+              ) r ON r.product_id=i.product_id
+            )
+            WHERE available > 0 AND available < 10
+            """
+        ).fetchone()["n"]
+
+        # KPI: stock value (uses dataset price_usd)
+        stock_value = conn.execute(
+            """
+            SELECT COALESCE(SUM(i.total_stock * COALESCE(p.price_usd,0)), 0) AS v
+            FROM inventory i
+            LEFT JOIN Products p ON p.product_id=i.product_id
+            """
+        ).fetchone()["v"]
+
+        # Sales metrics from activity_log (operational events)
+        sales = conn.execute(
+            """
+            SELECT
+              COALESCE(SUM(COALESCE(a.quantity,0) * COALESCE(p.price_usd,0)), 0) AS revenue,
+              COALESCE(SUM(COALESCE(a.quantity,0)), 0) AS units
+            FROM activity_log a
+            LEFT JOIN Products p ON p.product_id=a.product_id
+            WHERE a.event_type IN ('purchase','cashier_purchase','qr_scan_purchase')
+            """
+        ).fetchone()
+        revenue = float(sales["revenue"] or 0)
+        units_sold = int(sales["units"] or 0)
+
+        # Simulated profit: assume 60% COGS if unknown.
+        profit = conn.execute(
+            """
+            SELECT
+              COALESCE(SUM(COALESCE(a.quantity,0) * COALESCE(p.price_usd,0) * 0.40), 0) AS profit
+            FROM activity_log a
+            LEFT JOIN Products p ON p.product_id=a.product_id
+            WHERE a.event_type IN ('purchase','cashier_purchase','qr_scan_purchase')
+            """
+        ).fetchone()["profit"]
+        profit = float(profit or 0)
+
+        # Sales over time
+        sales_over_time = conn.execute(
+            """
+            SELECT date(ts) AS d, COALESCE(SUM(COALESCE(a.quantity,0) * COALESCE(p.price_usd,0)), 0) AS revenue
+            FROM activity_log a
+            LEFT JOIN Products p ON p.product_id=a.product_id
+            WHERE a.event_type IN ('purchase','cashier_purchase','qr_scan_purchase')
+              AND ts >= datetime('now', ?)
+            GROUP BY date(ts)
+            ORDER BY d ASC
+            """,
+            (f"-{days} days",),
+        ).fetchall()
+
+        # Top selling products (by units)
+        top = conn.execute(
+            """
+            SELECT
+              a.product_id,
+              COALESCE(pc.product_name, p.category, a.product_id) AS product_name,
+              COALESCE(SUM(COALESCE(a.quantity,0)),0) AS units
+            FROM activity_log a
+            LEFT JOIN product_catalog pc ON pc.product_id=a.product_id
+            LEFT JOIN Products p ON p.product_id=a.product_id
+            WHERE a.event_type IN ('purchase','cashier_purchase','qr_scan_purchase')
+            GROUP BY a.product_id, product_name
+            ORDER BY units DESC
+            LIMIT 5
+            """
+        ).fetchall()
+
+        # Stock distribution by category (total stock)
+        stock_by_cat = conn.execute(
+            """
+            SELECT COALESCE(pc.category, 'Uncategorized') AS category,
+                   COALESCE(SUM(i.total_stock),0) AS stock
+            FROM inventory i
+            LEFT JOIN product_catalog pc ON pc.product_id=i.product_id
+            GROUP BY category
+            ORDER BY stock DESC
+            """
+        ).fetchall()
+
+        # Low vs healthy pie
+        health = conn.execute(
+            """
+            SELECT
+              SUM(CASE WHEN available <= 0 THEN 1 ELSE 0 END) AS out_n,
+              SUM(CASE WHEN available > 0 AND available < 10 THEN 1 ELSE 0 END) AS low_n,
+              SUM(CASE WHEN available >= 10 THEN 1 ELSE 0 END) AS healthy_n
+            FROM (
+              SELECT
+                i.product_id,
+                i.total_stock - COALESCE(r.reserved_stock,0) AS available
+              FROM inventory i
+              LEFT JOIN (
+                SELECT product_id, SUM(quantity) AS reserved_stock
+                FROM reservations
+                WHERE status='active' AND expires_at > datetime('now')
+                GROUP BY product_id
+              ) r ON r.product_id=i.product_id
+            )
+            """
+        ).fetchone()
+
+        # Demand trend: simulate over time using current demand_per_day per category.
+        demand_now = demand_prediction.get_predicted_demand(DB_FILE)
+        # Map product->category then aggregate current demand by category.
+        cat_rows = conn.execute(
+            """
+            SELECT i.product_id, COALESCE(pc.category, 'Uncategorized') AS category
+            FROM inventory i
+            LEFT JOIN product_catalog pc ON pc.product_id=i.product_id
+            """
+        ).fetchall()
+        by_cat = {}
+        for r in cat_rows:
+            pid = r["product_id"]
+            cat = r["category"]
+            by_cat[cat] = by_cat.get(cat, 0.0) + float(demand_now.get(pid, 0.0) or 0.0)
+
+        # Pick top 4 categories by demand for chart readability.
+        top_cats = sorted(by_cat.items(), key=lambda x: x[1], reverse=True)[:4]
+        cats = [c for c, _ in top_cats] or ["All"]
+
+        # Build deterministic series (no randomness) for last N days.
+        # Use a simple cosine modulation so it looks like a trend.
+        import math
+        labels = []
+        series = {c: [] for c in cats}
+        for i in range(days - 1, -1, -1):
+            d = conn.execute("SELECT date(datetime('now', ?)) AS d", (f"-{i} days",)).fetchone()["d"]
+            labels.append(d)
+            for idx, c in enumerate(cats):
+                base = float(by_cat.get(c, 0.0) if c != "All" else sum(by_cat.values()))
+                mod = 1.0 + 0.10 * math.cos((i + idx) * 0.6)
+                series[c].append(round(base * mod, 2))
+
+        return {
+            "kpis": {
+                "total_products": int(total_products),
+                "stock_value_usd": round(float(stock_value or 0.0), 2),
+                "total_sales_usd": round(revenue, 2),
+                "total_profit_usd": round(profit, 2),
+                "low_stock_items": int(low_stock),
+                "units_sold": units_sold,
+            },
+            "sales_over_time": {
+                "labels": [r["d"] for r in sales_over_time],
+                "revenue": [float(r["revenue"] or 0.0) for r in sales_over_time],
+            },
+            "demand_trend": {
+                "labels": labels,
+                "series": series,
+            },
+            "top_selling": {
+                "labels": [r["product_name"] for r in top],
+                "units": [int(r["units"] or 0) for r in top],
+            },
+            "stock_by_category": {
+                "labels": [r["category"] for r in stock_by_cat],
+                "stock": [int(r["stock"] or 0) for r in stock_by_cat],
+            },
+            "stock_health": {
+                "out": int(health["out_n"] or 0),
+                "low": int(health["low_n"] or 0),
+                "healthy": int(health["healthy_n"] or 0),
+            },
+        }
     finally:
         conn.close()
 
@@ -1413,12 +1921,92 @@ def admin_cashier_purchase(req: CashierPurchaseRequest, _: None = Depends(requir
         conn.close()
 
 
+class ScanPurchaseRequest(BaseModel):
+    product_id: str
+    store_id: str
+    quantity: int
+
+
+@app.post("/scan_purchase")
+def scan_purchase(req: ScanPurchaseRequest, _: None = Depends(require_admin)):
+    """
+    Offline QR scan purchase:
+    - product_id comes from QR
+    - store_id comes from cashier selection (or device assignment)
+    - quantity is entered by cashier
+
+    Guarantees:
+    - total_stock decreases
+    - store_stock for that store decreases
+    - never sells below reserved_stock
+    - never allows negative store stock
+    """
+    if (req.product_id or "").strip() == "":
+        raise HTTPException(status_code=400, detail="product_id is required.")
+    if (req.store_id or "").strip() == "":
+        raise HTTPException(status_code=400, detail="store_id is required.")
+    if req.quantity <= 0:
+        raise HTTPException(status_code=400, detail="quantity must be > 0.")
+
+    conn = get_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        # Ensure store row exists; treat missing as 0 stock.
+        conn.execute(
+            "INSERT OR IGNORE INTO store_stock (store_id, product_id, stock) VALUES (?, ?, 0)",
+            (req.store_id, req.product_id),
+        )
+        ss = conn.execute(
+            "SELECT stock FROM store_stock WHERE store_id=? AND product_id=?",
+            (req.store_id, req.product_id),
+        ).fetchone()
+        store_stock = int(ss["stock"]) if ss else 0
+        if store_stock < req.quantity:
+            conn.execute("ROLLBACK")
+            raise HTTPException(status_code=409, detail="Not enough stock in selected store.")
+
+        # Apply atomic deltas
+        updated = _apply_stock_delta(
+            conn,
+            req.product_id,
+            total_delta=-req.quantity,
+            store_id=req.store_id,
+            store_delta=-req.quantity,
+            forbid_below_reserved=True,
+        )
+
+        log_activity(
+            conn,
+            "qr_scan_purchase",
+            "QR scan purchase completed.",
+            product_id=req.product_id,
+            store_id=req.store_id,
+            quantity=req.quantity,
+        )
+
+        conn.execute("COMMIT")
+        return {"success": True, **updated}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
 @app.post("/simulate_store_sale")
 def simulate_store_sale(req: StoreSaleRequest):
     """
     POST /simulate_store_sale
-    Simulates a physical in-store sale by directly reducing total_stock.
-    This keeps online inventory in sync with what actually sold in the store.
+    Simulates a physical in-store sale.
+    NOTE: This is legacy/simplified. Prefer /scan_purchase or /admin/cashier_purchase
+    because they update both total_stock and store_stock.
     """
     if req.quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be > 0.")
@@ -1427,40 +2015,13 @@ def simulate_store_sale(req: StoreSaleRequest):
     try:
         conn.execute("BEGIN IMMEDIATE")
 
-        row = conn.execute(
-            "SELECT total_stock FROM inventory WHERE product_id = ?",
-            (req.product_id,),
-        ).fetchone()
-
-        if not row:
-            conn.execute("ROLLBACK")
-            conn.close()
-            raise HTTPException(status_code=404, detail=f"Product {req.product_id} not found.")
-
-        if row["total_stock"] < req.quantity:
-            conn.execute("ROLLBACK")
-            conn.close()
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Not enough stock. Available: {row['total_stock']}, "
-                    f"Requested: {req.quantity}"
-                ),
-            )
-
-        conn.execute(
-            "UPDATE inventory SET total_stock = total_stock - ? WHERE product_id = ?",
-            (req.quantity, req.product_id),
-        )
+        # Assume it came from CENTRAL when store is not specified.
+        updated = _apply_stock_delta(conn, req.product_id, -req.quantity, CENTRAL_STORE_ID)
         conn.execute("COMMIT")
-
-        new_stock = row["total_stock"] - req.quantity
         return {
             "success": True,
-            "product_id": req.product_id,
+            **updated,
             "quantity": req.quantity,
-            "stock_before": row["total_stock"],
-            "stock_after": new_stock
         }
     except HTTPException:
         raise
