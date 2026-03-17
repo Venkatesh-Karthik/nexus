@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <rect width="300" height="200" fill="#0f0f13"/>
+  <g fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="6" stroke-linecap="round">
+    <path d="M110 70c0-18 12-30 30-30s30 12 30 30v60c0 18-12 30-30 30s-30-12-30-30z"/>
+    <path d="M175 60c0-18 12-30 30-30s30 12 30 30v70c0 18-12 30-30 30s-30-12-30-30z"/>
+  </g>
+  <text x="20" y="178" fill="rgba(255,255,255,0.75)" font-family="Arial, sans-serif" font-size="14" font-weight="700">Apple AirPods</text>
+</svg>
+

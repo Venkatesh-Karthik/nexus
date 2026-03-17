@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <rect width="300" height="200" fill="#0f0f13"/>
+  <path d="M66 130c42-20 76-22 102-8 18 10 40 10 66 4 20-5 36 8 36 24H56c0-8 4-14 10-20z"
+        fill="rgba(255,255,255,0.18)"/>
+  <g stroke="rgba(255,255,255,0.28)" stroke-width="6" stroke-linecap="round">
+    <path d="M120 98l18 12"/>
+    <path d="M112 112l18 12"/>
+    <path d="M104 126l18 12"/>
+  </g>
+  <text x="20" y="178" fill="rgba(255,255,255,0.75)" font-family="Arial, sans-serif" font-size="14" font-weight="700">Adidas Ultraboost</text>
+</svg>
+

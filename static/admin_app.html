@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #050507;
@@ -43,6 +44,14 @@
     .btn-danger { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.20); color:#ffd0d0; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .kpis { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .kpi { background: var(--surface); border:1px solid var(--border); border-radius: 1.1rem; padding: 0.9rem; box-shadow: 0 24px 60px -28px rgba(0,0,0,0.75); }
+    .kpi .k { color: var(--text-dim); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+    .kpi .v { margin-top: 0.4rem; font-size: 1.35rem; font-weight: 950; letter-spacing:-0.02em; }
+    .kpi .s { margin-top: 0.35rem; color: var(--text-dim); font-size: 0.82rem; font-weight: 800; }
+    .chart { height: 280px; }
+    canvas { width: 100% !important; height: 100% !important; }
     .panel { background: var(--surface); border:1px solid var(--border); border-radius: 1.25rem; padding: 1rem; box-shadow: 0 24px 60px -28px rgba(0,0,0,0.75); }
     .title { font-weight: 950; letter-spacing:-0.02em; margin-bottom: 0.25rem; }
     .sub { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.9rem; }
@@ -82,6 +91,7 @@
       </div>
       <div class="row" style="justify-content:flex-end;">
         <div class="pill" id="auth-pill">Admin: Logged out</div>
+        <a class="btn" href="/offline">Offline Cashier</a>
         <button class="btn" onclick="logout()">Logout</button>
       </div>
     </header>
@@ -99,6 +109,42 @@
     </div>
 
     <div id="dash" class="hidden">
+      <div class="kpis">
+        <div class="kpi"><div class="k">Total Products</div><div class="v" id="kpi-products">–</div><div class="s">Active SKUs</div></div>
+        <div class="kpi"><div class="k">Total Stock Value</div><div class="v" id="kpi-stockvalue">–</div><div class="s">USD estimate</div></div>
+        <div class="kpi"><div class="k">Total Sales</div><div class="v" id="kpi-sales">–</div><div class="s">Revenue (all time)</div></div>
+        <div class="kpi"><div class="k">Total Profit</div><div class="v" id="kpi-profit">–</div><div class="s">Simulated margin</div></div>
+        <div class="kpi"><div class="k">Low Stock Items</div><div class="v" id="kpi-low">–</div><div class="s">Available 1–9</div></div>
+      </div>
+
+      <div class="grid" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="title">Sales over time</div>
+          <div class="sub">Daily revenue from online + cashier + QR scan purchases.</div>
+          <div class="chart"><canvas id="ch-sales"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="title">Demand trend</div>
+          <div class="sub">Top categories by demand (simulated trend from orders).</div>
+          <div class="chart"><canvas id="ch-demand"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="title">Top selling products</div>
+          <div class="sub">Top 5 by units sold (from activity log).</div>
+          <div class="chart"><canvas id="ch-top"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="title">Stock distribution</div>
+          <div class="sub">Total stock by category (central inventory).</div>
+          <div class="chart"><canvas id="ch-stockcat"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="title">Stock health</div>
+          <div class="sub">Healthy vs low vs out of stock (available units).</div>
+          <div class="chart"><canvas id="ch-health"></canvas></div>
+        </div>
+      </div>
+
       <div class="grid">
         <div class="panel">
           <div class="title">Inventory Management</div>
@@ -106,7 +152,15 @@
           <div class="row">
             <div class="field">
               <label>Add Product (name)</label>
-              <input id="add-prod-name" placeholder="e.g. Smartwatch">
+              <input id="add-prod-name" placeholder="e.g. Rolex Submariner">
+            </div>
+            <div class="field">
+              <label>Category</label>
+              <input id="add-prod-cat" placeholder="e.g. Watches">
+            </div>
+            <div class="field">
+              <label>Brand</label>
+              <input id="add-prod-brand" placeholder="e.g. Rolex">
             </div>
             <button class="btn btn-primary" onclick="addProduct()">Add</button>
           </div>
@@ -205,6 +259,19 @@
             <button class="btn btn-primary" onclick="cashierPurchase()">Purchase</button>
           </div>
         </div>
+
+        <div class="panel">
+          <div class="title">Trust & Demand (quick view)</div>
+          <div class="sub">Uses dataset audits + online orders to estimate reliability and demand.</div>
+          <div class="row">
+            <div class="field">
+              <label>Product ID</label>
+              <input id="td-pid" placeholder="e.g. PROD-2000">
+            </div>
+            <button class="btn" onclick="loadTrustDemand()">Load</button>
+          </div>
+          <div id="td-out" class="sub" style="margin-top:10px;"></div>
+        </div>
       </div>
 
       <div class="panel" style="margin-top:16px;">
@@ -243,6 +310,105 @@
       document.getElementById('dash').classList.toggle('hidden', !isAdmin());
     }
 
+    function attachRealtime() {
+      if (!isAdmin()) return;
+      if (window.__nexus_es) return;
+      try {
+        const es = new EventSource('/admin/events');
+        window.__nexus_es = es;
+        es.addEventListener('activity', () => {
+          refreshActivity(true);
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const charts = { sales:null, demand:null, top:null, stockcat:null, health:null };
+    function money(n) {
+      const x = Number(n||0);
+      return x.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits: 0 });
+    }
+
+    function chartDefaults() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: 'rgba(255,255,255,0.78)', font: { weight: 800 } } },
+          tooltip: { enabled: true }
+        },
+        scales: {
+          x: { ticks: { color: 'rgba(255,255,255,0.55)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
+          y: { ticks: { color: 'rgba(255,255,255,0.55)' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
+      };
+    }
+
+    async function refreshAnalytics() {
+      if (!isAdmin()) return;
+      try {
+        const data = await apiGet('/admin/analytics?days=14');
+        const k = data.kpis || {};
+        document.getElementById('kpi-products').innerText = (k.total_products ?? 0).toLocaleString();
+        document.getElementById('kpi-stockvalue').innerText = money(k.stock_value_usd);
+        document.getElementById('kpi-sales').innerText = money(k.total_sales_usd);
+        document.getElementById('kpi-profit').innerText = money(k.total_profit_usd);
+        document.getElementById('kpi-low').innerText = (k.low_stock_items ?? 0).toLocaleString();
+
+        // Sales line
+        const so = data.sales_over_time || { labels:[], revenue:[] };
+        const salesCfg = {
+          type: 'line',
+          data: { labels: so.labels, datasets: [{ label:'Revenue', data: so.revenue, borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,0.25)', fill:true, tension:0.35, pointRadius:0 }] },
+          options: chartDefaults()
+        };
+        charts.sales?.destroy(); charts.sales = new Chart(document.getElementById('ch-sales'), salesCfg);
+
+        // Demand trend multi-line
+        const dt = data.demand_trend || { labels:[], series:{} };
+        const colors = ['#10b981','#6366f1','#f59e0b','#ef4444'];
+        const ds = Object.entries(dt.series || {}).map(([name, vals], i) => ({
+          label: name,
+          data: vals,
+          borderColor: colors[i % colors.length],
+          backgroundColor: 'transparent',
+          tension: 0.35,
+          pointRadius: 0
+        }));
+        charts.demand?.destroy(); charts.demand = new Chart(document.getElementById('ch-demand'), { type:'line', data:{ labels: dt.labels, datasets: ds }, options: chartDefaults() });
+
+        // Top selling horizontal bar
+        const tp = data.top_selling || { labels:[], units:[] };
+        const topCfg = {
+          type:'bar',
+          data:{ labels: tp.labels, datasets:[{ label:'Units', data: tp.units, backgroundColor:'rgba(16,185,129,0.75)' }] },
+          options: { ...chartDefaults(), indexAxis:'y' }
+        };
+        charts.top?.destroy(); charts.top = new Chart(document.getElementById('ch-top'), topCfg);
+
+        // Stock by category bar
+        const sc = data.stock_by_category || { labels:[], stock:[] };
+        const scCfg = {
+          type:'bar',
+          data:{ labels: sc.labels, datasets:[{ label:'Stock', data: sc.stock, backgroundColor:'rgba(99,102,241,0.55)' }] },
+          options: chartDefaults()
+        };
+        charts.stockcat?.destroy(); charts.stockcat = new Chart(document.getElementById('ch-stockcat'), scCfg);
+
+        // Stock health pie
+        const h = data.stock_health || { healthy:0, low:0, out:0 };
+        const hCfg = {
+          type:'pie',
+          data:{ labels:['Healthy','Low','Out'], datasets:[{ data:[h.healthy,h.low,h.out], backgroundColor:['rgba(16,185,129,0.8)','rgba(245,158,11,0.8)','rgba(239,68,68,0.8)'] }] },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'rgba(255,255,255,0.78)', font:{ weight: 800 } } } } }
+        };
+        charts.health?.destroy(); charts.health = new Chart(document.getElementById('ch-health'), hCfg);
+      } catch (e) {
+        // Avoid spamming toasts during auto-refresh
+      }
+    }
+
     async function login() {
       const password = (document.getElementById('pw').value || '').trim();
       if (!password) return toast('Password required');
@@ -253,6 +419,8 @@
       document.getElementById('pw').value = '';
       toast('Logged in');
       setAuthUI();
+      attachRealtime();
+      refreshAnalytics();
       refreshAll();
     }
 
@@ -285,8 +453,12 @@
       try {
         const product_name = (document.getElementById('add-prod-name').value || '').trim();
         if (!product_name) return toast('Product name required');
-        const data = await apiPost('/add_product', { product_name });
+        const category = (document.getElementById('add-prod-cat').value || '').trim();
+        const brand = (document.getElementById('add-prod-brand').value || '').trim();
+        const data = await apiPost('/add_product', { product_name, category, brand });
         document.getElementById('add-prod-name').value = '';
+        document.getElementById('add-prod-cat').value = '';
+        document.getElementById('add-prod-brand').value = '';
         toast(`Added ${data.product_id}`);
       } catch (e) { toast(`❌ ${e.message}`); }
     }
@@ -419,12 +591,31 @@
     }
 
     async function refreshAll() {
-      await Promise.allSettled([refreshWaitlist(), refreshActivity()]);
+      await Promise.allSettled([refreshWaitlist(), refreshActivity(), refreshAnalytics()]);
+    }
+
+    async function loadTrustDemand() {
+      try {
+        const pid = (document.getElementById('td-pid').value || '').trim();
+        if (!pid) return toast('product_id required');
+        const data = await apiGet(`/api/inventory/${encodeURIComponent(pid)}`);
+        // /api/inventory/{pid} returns live stock; trust/demand are on list endpoint.
+        const list = await apiGet(`/api/inventory`);
+        const row = list.find(x => x.product_id === pid);
+        const out = document.getElementById('td-out');
+        out.innerHTML = row
+          ? `<div><strong>Trust:</strong> ${row.trust_score ?? 'N/A'} (${row.trust_label || 'No Data'})</div>
+             <div><strong>Demand:</strong> ${row.demand_per_day ?? 0} units/day</div>
+             <div><strong>Available:</strong> ${row.available_stock}</div>`
+          : `No data for ${pid}`;
+      } catch (e) { toast(`❌ ${e.message}`); }
     }
 
     setAuthUI();
+    attachRealtime();
     if (isAdmin()) refreshAll();
     setInterval(() => { if (isAdmin()) refreshActivity(); }, 3000);
+    setInterval(() => { if (isAdmin()) refreshAnalytics(); }, 8000);
   </script>
 </body>
 

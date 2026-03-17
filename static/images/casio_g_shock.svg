@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <rect width="300" height="200" fill="#0f0f13"/>
+  <g fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="8">
+    <rect x="78" y="54" width="144" height="92" rx="22"/>
+    <rect x="105" y="78" width="90" height="44" rx="10"/>
+  </g>
+  <text x="20" y="178" fill="rgba(255,255,255,0.75)" font-family="Arial, sans-serif" font-size="14" font-weight="700">Casio GShock</text>
+</svg>
+

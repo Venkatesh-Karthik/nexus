@@ -517,6 +517,15 @@
       return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
     }
 
+    const productImages = {
+      "Apple AirPods": "/images/apple_airpods.svg",
+      "Apple AirPods Pro": "/images/apple_airpods.svg",
+      "Casio G-Shock": "/images/casio_g_shock.svg",
+      "Casio G Shock": "/images/casio_g_shock.svg",
+      "Nike Air Max 90": "/images/nike_air_max_90.svg",
+      "Adidas Ultraboost": "/images/adidas_ultraboost.svg"
+    };
+
     function getCart() {
       try { return JSON.parse(localStorage.getItem(cartKey) || '{}'); } catch { return {}; }
     }
@@ -527,9 +536,28 @@
     function setReservations(m) { localStorage.setItem(rsvKey, JSON.stringify(m)); }
 
     function getImage(product) {
-      const queryRaw = product?.category || product?.name || product?.product_name || product?.product_id || "product";
+      const name = String(product?.product_name || "").trim();
+      // 1) Local mapping (hybrid system)
+      if (name && productImages[name]) return productImages[name];
+
+      // 2) Unsplash fallback
+      const queryRaw = name || product?.category || product?.brand || product?.product_id || "product";
       const query = encodeURIComponent(String(queryRaw).trim() || "product");
-      return `https://source.unsplash.com/300x200/?${query}`;
+      return `https://source.unsplash.com/featured/300x200/?${query}`;
+    }
+
+    function handleImgError(img) {
+      const stage = img.dataset.stage || "0";
+      // First failure → try an alternative stock provider
+      if (stage === "0") {
+        img.dataset.stage = "1";
+        const q = encodeURIComponent(img.getAttribute("data-query") || "product");
+        img.src = `https://picsum.photos/300/200?random&${q}`;
+        return;
+      }
+      // Second failure → final local placeholder
+      img.onerror = null;
+      img.src = "/images/default.svg";
     }
 
     function stockBadge(p) {
@@ -653,15 +681,23 @@
       return `
         <div class="card" onclick="openDetails('${p.product_id}')">
           <div class="img-wrap">
-            <img class="card-img" src="${getImage(p)}" alt="product image"
+            <img
+              class="card-img"
+              src="${getImage(p)}"
+              alt="${escapeHtml(p.product_name || 'product image')}"
+              data-query="${escapeHtml(p.product_name || p.category || p.brand || p.product_id || 'product')}"
               loading="lazy"
-              onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200';">
+              onerror="handleImgError(this)">
           </div>
           <div class="card-body">
             <div class="top">
               <div>
                 <div class="name">${escapeHtml(p.product_name || 'Product')}</div>
-                <div class="sku">${escapeHtml(p.product_id)}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                  ${p.brand ? `<span class="pill" style="padding:0.28rem 0.6rem; font-size:0.72rem;">${escapeHtml(p.brand)}</span>` : ``}
+                  ${p.category ? `<span class="pill" style="padding:0.28rem 0.6rem; font-size:0.72rem;">${escapeHtml(p.category)}</span>` : ``}
+                </div>
+                <div class="sku">SKU • ${escapeHtml(p.product_id)}</div>
               </div>
               <div class="badges">
                 <span class="badge ${stock.c}">${stock.t}</span>
@@ -670,7 +706,7 @@
               </div>
             </div>
             <div class="line"><div class="k">Available</div><div class="v ${availCls}">${a}</div></div>
-            <div class="line"><div class="k">Demand</div><div class="v">${fmt(p.predicted_demand)} <span style="color:var(--text-dim); font-size:0.85rem; font-weight:800;">/day</span></div></div>
+            <div class="line"><div class="k">Demand</div><div class="v">${fmt(p.demand_per_day ?? p.predicted_demand)} <span style="color:var(--text-dim); font-size:0.85rem; font-weight:800;">/day</span></div></div>
             <div class="progress"><div style="width:${pct}%; background:${pColor};"></div></div>
             ${buttons}
           </div>
@@ -882,6 +918,17 @@
       document.getElementById('sync').innerText = `Live: ${new Date().toLocaleTimeString()}`;
     }
 
+    function attachRealtime() {
+      if (window.__nexus_es) return;
+      try {
+        const es = new EventSource('/events');
+        window.__nexus_es = es;
+        es.addEventListener('activity', () => {
+          refresh().catch(() => {});
+        });
+      } catch (e) { /* ignore */ }
+    }
+
     // init
     renderCartCount();
     document.getElementById('q').addEventListener('input', (e) => { state.q = e.target.value || ''; state.page = 1; apply(); });
@@ -898,6 +945,7 @@
       if (document.getElementById('rsv-modal').style.display === 'flex') renderReservations();
     }, 1000);
 
+    attachRealtime();
     refresh().catch(() => toast('❌ Failed to load products'));
     setInterval(() => refresh().catch(() => {}), 2500);
   </script>
