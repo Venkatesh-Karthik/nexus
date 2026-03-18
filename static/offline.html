@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nexus | Offline Cashier</title>
+  <title>SmartSync Inventory | Offline Cashier</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -300,7 +300,7 @@
       if (!state.isAdmin) { toast('Please login first', 'error'); return; }
       if (scanRunning) return;
       if (!secureContextOk()) {
-        toast('Camera requires HTTPS or localhost. Open this app via http://127.0.0.1:8000/offline', 'error');
+        toast('Camera requires HTTPS. Please ensure you are on a secure connection.', 'error');
         return;
       }
       scanRunning = true;
