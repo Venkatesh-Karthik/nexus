@@ -288,7 +288,19 @@
   <div id="toast"></div>
 
   <script>
-    const API_URL = "https://your-backend-url"; // Replace with your backend URL
+    const API_URL = "https://nexus-1cbj.onrender.com"; // Updated to user's Render URL
+    
+    async function fetchWithRetry(url, options = {}, retries = 5) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          console.warn(`Retry ${i+1}/${retries} for ${url}`);
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 4000));
+      }
+      throw new Error("Backend connection failed.");
+    }
     function toast(msg) {
       const host = document.getElementById('toast');
       const t = document.createElement('div');
@@ -413,7 +425,7 @@
     async function login() {
       const password = (document.getElementById('pw').value || '').trim();
       if (!password) return toast('Password required');
-      const res = await fetch(API_URL + '/admin_login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password }) });
+      const res = await fetchWithRetry(API_URL + '/admin_login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password }) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok || !data.admin) return toast('Invalid password');
       localStorage.setItem('isAdmin','true');
@@ -432,19 +444,19 @@
     }
 
     async function apiPost(path, body) {
-      const res = await fetch(API_URL + path, { method:'POST', headers: authHeaders(true), body: JSON.stringify(body||{}) });
+      const res = await fetchWithRetry(API_URL + path, { method:'POST', headers: authHeaders(true), body: JSON.stringify(body||{}) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;
     }
     async function apiDelete(path) {
-      const res = await fetch(API_URL + path, { method:'DELETE', headers: authHeaders(false) });
+      const res = await fetchWithRetry(API_URL + path, { method:'DELETE', headers: authHeaders(false) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;
     }
     async function apiGet(path) {
-      const res = await fetch(API_URL + path, { headers: authHeaders(false) });
+      const res = await fetchWithRetry(API_URL + path, { headers: authHeaders(false) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;

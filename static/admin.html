@@ -341,7 +341,19 @@
     <div id="toast-container"></div>
 
     <script>
-        const API_URL = "https://your-backend-url"; // Replace with your backend URL
+        const API_URL = "https://nexus-1cbj.onrender.com"; // Updated to user's Render URL
+        
+        async function fetchWithRetry(url, options = {}, retries = 5) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const res = await fetch(url, options);
+                    if (res.ok) return res;
+                    console.warn(`Retry ${i+1}/${retries} for ${url}`);
+                } catch (e) {}
+                await new Promise(r => setTimeout(r, 4000));
+            }
+            throw new Error("Backend connection failed. Please check if the server is awake.");
+        }
         function showToast(msg) {
             const host = document.getElementById('toast-container');
             const t = document.createElement('div');
@@ -370,7 +382,7 @@
             const password = (document.getElementById('admin-password').value || '').trim();
             if (!password) return showToast('⚠️ Password required');
             try {
-                const res = await fetch(API_URL + '/admin_login', {
+                const res = await fetchWithRetry(API_URL + '/admin_login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
@@ -403,7 +415,7 @@
         }
 
         async function adminPost(path, payload) {
-            const res = await fetch(API_URL + path, {
+            const res = await fetchWithRetry(API_URL + path, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -417,7 +429,7 @@
         }
 
         async function adminDelete(path) {
-            const res = await fetch(API_URL + path, {
+            const res = await fetchWithRetry(API_URL + path, {
                 method: 'DELETE',
                 headers: { 'x-is-admin': isAdmin() ? 'true' : 'false' }
             });

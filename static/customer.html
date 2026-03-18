@@ -449,12 +449,57 @@
 
     #toast {
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
-      z-index: 3000;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 9999;
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    #loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(99, 102, 241, 0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .loading-sub {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
     }
 
     .toast {
@@ -695,7 +740,15 @@
   </style>
 </head>
 
-<body>
+<body onload="init()">
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">
+      Waking up SmartSync Inventory...
+      <div class="loading-sub">Backend server starting on Render (may take ~30s)</div>
+    </div>
+  </div>
+
   <div class="container">
     <header>
       <div class="brand">
@@ -814,8 +867,22 @@
   </div>
 
   <script>
-    const API_URL = "https://your-backend-url"; // Replace with your backend URL
+    const API_URL = "https://nexus-1cbj.onrender.com"; // Updated to user's Render URL
     const PAGE_SIZE = 12;
+
+    async function fetchWithRetry(url, options = {}, retries = 10) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          console.warn(`Request to ${url} returned ${res.status}. Retrying... (${i + 1}/${retries})`);
+        } catch (e) {
+          console.error(`Fetch error for ${url}:`, e);
+        }
+        await new Promise(r => setTimeout(r, 4000));
+      }
+      throw new Error(`Failed to connect to backend after ${retries} attempts. The server might be down.`);
+    }
     const state = { all: [], filtered: [], status: 'all', q: '', page: 1 };
     const cartKey = 'cartItems';   // pid -> qty
     const rsvKey = 'activeReservations'; // pid -> { reservation_id, expires_at_ms }
@@ -1035,31 +1102,20 @@
     }
 
     async function fetchStock() {
-      console.log("Fetching /stock...");
-      const res = await fetch(API_URL + '/stock');
-      if (!res.ok) {
-        console.error("Failed to fetch /stock:", res.status, res.statusText);
-        throw new Error('Failed to load inventory from backend.');
-      }
+      console.log("Fetching /api/inventory...");
+      const res = await fetchWithRetry(API_URL + '/api/inventory');
       const data = await res.json();
-      console.log("API response (/stock):", data);
+      console.log("API response (/api/inventory):", data);
       return data;
     }
 
     async function fetchStores() {
       console.log("Fetching /api/stores...");
-      const res = await fetch(API_URL + '/api/stores');
-      if (!res.ok) {
-        console.error("Failed to fetch /api/stores:", res.status, res.statusText);
-        return [];
-      }
-      const data = await res.json();
-      console.log("API response (/api/stores):", data);
-      return data;
+      const res = await fetchWithRetry(API_URL + '/api/stores');
+      return await res.json();
     }
 
     async function reserve(pid, qty = 1) {
-      console.log(`Reserving ${qty} of ${pid}...`);
       const res = await fetch(API_URL + '/api/reserve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: pid, quantity: qty }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.message || 'Reserve failed');
@@ -1328,12 +1384,16 @@
       renderCartCount();
       renderReservations();
       document.getElementById('sync').innerText = `Live: ${new Date().toLocaleTimeString()}`;
+      
+      // Hide loading overlay on first successful load
+      const loader = document.getElementById('loading-overlay');
+      if (loader) loader.classList.add('hidden');
     }
 
     function attachRealtime() {
       if (window.__nexus_es) return;
       try {
-        const es = new EventSource('/events');
+        const es = new EventSource(API_URL + '/events');
         window.__nexus_es = es;
         es.addEventListener('activity', () => {
           refresh().catch(() => { });
@@ -1341,28 +1401,34 @@
       } catch (e) { /* ignore */ }
     }
 
-    // init
-    renderCartCount();
-    document.getElementById('q').addEventListener('input', (e) => { state.q = e.target.value || ''; state.page = 1; apply(); });
-    setInterval(() => {
-      // timers
-      const map = getReservations();
-      let changed = false;
-      for (const [pid, r] of Object.entries(map)) {
-        if (!r?.expires_at_ms) continue;
-        if (r.expires_at_ms <= Date.now()) { delete map[pid]; changed = true; }
-      }
-      if (changed) setReservations(map);
-      // rerender reservation list if open
-      if (document.getElementById('rsv-modal').style.display === 'flex') renderReservations();
-    }, 1000);
-
     attachRealtime();
-    refresh().catch((err) => {
-      console.error("Initial refresh failed:", err);
-      toast('❌ Failed to load products. ' + err.message);
-    });
-    setInterval(() => refresh().catch(() => { }), 2500);
+    async function init() {
+      renderCartCount();
+      document.getElementById('q').addEventListener('input', (e) => { state.q = e.target.value || ''; state.page = 1; apply(); });
+      
+      try {
+        await refresh();
+      } catch (err) {
+        console.error("Initial refresh mapping failed:", err);
+        toast('❌ Backend connection timed out. Please refresh.');
+        // Don't hide overlay so user knows it's broken
+      }
+      
+      setInterval(() => {
+        // timers
+        const map = getReservations();
+        let changed = false;
+        for (const [pid, r] of Object.entries(map)) {
+          if (!r?.expires_at_ms) continue;
+          if (r.expires_at_ms <= Date.now()) { delete map[pid]; changed = true; }
+        }
+        if (changed) setReservations(map);
+        // rerender reservation list if open
+        if (document.getElementById('rsv-modal').style.display === 'flex') renderReservations();
+      }, 1000);
+      
+      setInterval(() => refresh().catch(() => { }), 10000);
+    }
   </script>
 </body>
 
