@@ -341,9 +341,7 @@
     <div id="toast-container"></div>
 
     <script>
-        const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
-          ? "" 
-          : "https://nexus-1cbj.onrender.com";
+        const API_URL = "https://nexus-1cbj.onrender.com";
         
         async function fetchWithRetry(url, options = {}, retries = 5) {
             for (let i = 0; i < retries; i++) {

@@ -867,9 +867,7 @@
   </div>
 
   <script>
-    const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
-      ? "" 
-      : "https://nexus-1cbj.onrender.com";
+    const API_URL = "https://nexus-1cbj.onrender.com";
     const PAGE_SIZE = 12;
 
     async function fetchWithRetry(url, options = {}, retries = 10) {
@@ -1104,10 +1102,10 @@
     }
 
     async function fetchStock() {
-      console.log("Fetching /api/inventory...");
-      const res = await fetchWithRetry(API_URL + '/api/inventory');
-      const data = await res.json();
-      console.log("API response (/api/inventory):", data);
+      console.log("Fetching /products...");
+      const data = await fetchWithRetry(API_URL + "/products");
+      allProducts = data;
+      console.log("API response (/products):", data);
       return data;
     }
 
