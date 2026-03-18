@@ -814,6 +814,7 @@
   </div>
 
   <script>
+    const API_URL = "https://your-backend-url"; // Replace with your backend URL
     const PAGE_SIZE = 12;
     const state = { all: [], filtered: [], status: 'all', q: '', page: 1 };
     const cartKey = 'cartItems';   // pid -> qty
@@ -1035,7 +1036,7 @@
 
     async function fetchStock() {
       console.log("Fetching /stock...");
-      const res = await fetch('/stock');
+      const res = await fetch(API_URL + '/stock');
       if (!res.ok) {
         console.error("Failed to fetch /stock:", res.status, res.statusText);
         throw new Error('Failed to load inventory from backend.');
@@ -1047,7 +1048,7 @@
 
     async function fetchStores() {
       console.log("Fetching /api/stores...");
-      const res = await fetch('/api/stores');
+      const res = await fetch(API_URL + '/api/stores');
       if (!res.ok) {
         console.error("Failed to fetch /api/stores:", res.status, res.statusText);
         return [];
@@ -1059,7 +1060,7 @@
 
     async function reserve(pid, qty = 1) {
       console.log(`Reserving ${qty} of ${pid}...`);
-      const res = await fetch('/api/reserve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: pid, quantity: qty }) });
+      const res = await fetch(API_URL + '/api/reserve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: pid, quantity: qty }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.message || 'Reserve failed');
       if (!data.success) throw new Error(data.message || 'Out of stock');
@@ -1077,7 +1078,7 @@
       const r = map[pid];
       if (!r) return;
       console.log(`Releasing reservation ${r.reservation_id}...`);
-      await fetch(`/api/reserve/${r.reservation_id}`, { method: 'DELETE' });
+      await fetch(API_URL + `/api/reserve/${r.reservation_id}`, { method: 'DELETE' });
       delete map[pid];
       setReservations(map);
       toast(`Reservation released • ${pid}`);
@@ -1086,7 +1087,7 @@
 
     async function purchaseReservation(reservation_id, store_id) {
       console.log(`Purchasing reservation ${reservation_id} for store ${store_id}...`);
-      const res = await fetch('/api/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reservation_id, store_id }) });
+      const res = await fetch(API_URL + '/api/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reservation_id, store_id }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || 'Purchase failed');
       return data;
@@ -1108,7 +1109,7 @@
       const email = prompt('Enter your email to be notified:');
       if (!email) return;
       console.log(`Joining waitlist for ${pid}...`);
-      const res = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: pid, customer_email: email }) });
+      const res = await fetch(API_URL + '/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: pid, customer_email: email }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) return toast(`Waitlist failed • ${pid}`);
       toast(`Waitlist joined • ${pid}`);

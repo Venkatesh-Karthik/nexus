@@ -288,6 +288,7 @@
   <div id="toast"></div>
 
   <script>
+    const API_URL = "https://your-backend-url"; // Replace with your backend URL
     function toast(msg) {
       const host = document.getElementById('toast');
       const t = document.createElement('div');
@@ -314,7 +315,7 @@
       if (!isAdmin()) return;
       if (window.__nexus_es) return;
       try {
-        const es = new EventSource('/admin/events');
+        const es = new EventSource(API_URL + '/admin/events');
         window.__nexus_es = es;
         es.addEventListener('activity', () => {
           refreshActivity(true);
@@ -412,7 +413,7 @@
     async function login() {
       const password = (document.getElementById('pw').value || '').trim();
       if (!password) return toast('Password required');
-      const res = await fetch('/admin_login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password }) });
+      const res = await fetch(API_URL + '/admin_login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password }) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok || !data.admin) return toast('Invalid password');
       localStorage.setItem('isAdmin','true');
@@ -431,19 +432,19 @@
     }
 
     async function apiPost(path, body) {
-      const res = await fetch(path, { method:'POST', headers: authHeaders(true), body: JSON.stringify(body||{}) });
+      const res = await fetch(API_URL + path, { method:'POST', headers: authHeaders(true), body: JSON.stringify(body||{}) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;
     }
     async function apiDelete(path) {
-      const res = await fetch(path, { method:'DELETE', headers: authHeaders(false) });
+      const res = await fetch(API_URL + path, { method:'DELETE', headers: authHeaders(false) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;
     }
     async function apiGet(path) {
-      const res = await fetch(path, { headers: authHeaders(false) });
+      const res = await fetch(API_URL + path, { headers: authHeaders(false) });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data.detail || 'Request failed');
       return data;
